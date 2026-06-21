@@ -269,7 +269,7 @@
 
     <div class="stat-row">
       <div class="stat-block">
-        <div class="stat-number">1,191+</div>
+        <div class="stat-number" id="live-count">—</div>
         <div class="stat-label">Businesses in the directory</div>
       </div>
       <div class="stat-block">
@@ -313,6 +313,26 @@
 <footer>
   &copy; 2025 Education to Action LLC &nbsp;|&nbsp; The People's Ledger &nbsp;|&nbsp; Louisville, Kentucky
 </footer>
+
+<script>
+  (async () => {
+    try {
+      const res = await fetch("https://ursmecdpgtqckacyhnko.supabase.co/rest/v1/businesses?select=*&limit=1", {
+        headers: {
+          apikey: "sb_publishable_A0zmuZVHVPtosZrNdFE4GQ_sITuTrkg",
+          Authorization: "Bearer sb_publishable_A0zmuZVHVPtosZrNdFE4GQ_sITuTrkg",
+          Prefer: "count=exact"
+        }
+      });
+      const total = parseInt(res.headers.get("content-range")?.split("/")[1] || "0");
+      if (total > 0) {
+        document.getElementById("live-count").textContent = total.toLocaleString() + "+";
+      }
+    } catch(e) {
+      document.getElementById("live-count").textContent = "1,191+";
+    }
+  })();
+</script>
 
 </body>
 </html>
