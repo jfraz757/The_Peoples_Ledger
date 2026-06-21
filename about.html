@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About | The People's Ledger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      min-height: 100%;
+      background-color: #1a1a1a;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #ffffff;
+    }
+
+    /* ─── Header ─────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 50px;
+      z-index: 100;
+      background-color: rgba(30, 30, 30, 0.92);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    .site-title {
+      font-family: 'Michroma', sans-serif;
+      font-weight: 400;
+      color: #FFD700;
+      font-size: clamp(18px, 2.8vw, 38px);
+      letter-spacing: 3px;
+      -webkit-text-stroke: 1px #FFD700;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
+      white-space: nowrap;
+    }
+
+    .header-nav {
+      margin-left: auto;
+    }
+
+    .nav-link {
+      font-family: 'Michroma', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      color: rgba(255,215,0,0.65);
+      text-decoration: none;
+      padding: 6px 14px;
+      border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 20px;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+      color: #1a1a1a;
+      background-color: #FFD700;
+      border-color: #FFD700;
+    }
+
+    .nav-link.active {
+      color: #1a1a1a;
+      background-color: #FFD700;
+      border-color: #FFD700;
+    }
+
+    /* ─── Hero Banner ─────────────────────────────────────────── */
+    .hero-banner {
+      background-color: #111111;
+      border-bottom: 3px solid #FFD700;
+      padding: 52px 40px 44px;
+      text-align: center;
+    }
+
+    .hero-banner h1 {
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(1.2rem, 2.5vw, 2rem);
+      color: #FFD700;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    .hero-banner p {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.70);
+      max-width: 620px;
+      margin: 0 auto;
+      line-height: 1.75;
+    }
+
+    /* ─── Content ─────────────────────────────────────────────── */
+    .about-content {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 60px 32px 80px;
+    }
+
+    .about-section {
+      margin-bottom: 52px;
+    }
+
+    .about-section h2 {
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(0.9rem, 1.8vw, 1.15rem);
+      color: #FFD700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,215,0,0.2);
+    }
+
+    .about-section p {
+      font-size: 0.97rem;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.85;
+      margin-bottom: 18px;
+    }
+
+    .about-section p:last-child {
+      margin-bottom: 0;
+    }
+
+    .about-section p strong {
+      color: #FFD700;
+      font-weight: 700;
+    }
+
+    /* ─── Pull Quote ──────────────────────────────────────────── */
+    .pull-quote {
+      border-left: 3px solid #FFD700;
+      padding: 16px 24px;
+      margin: 36px 0;
+      background-color: rgba(255,215,0,0.04);
+    }
+
+    .pull-quote p {
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(0.85rem, 1.5vw, 1rem);
+      color: rgba(255,215,0,0.85);
+      letter-spacing: 1px;
+      line-height: 1.7;
+      margin-bottom: 0 !important;
+    }
+
+    /* ─── Stat Row ────────────────────────────────────────────── */
+    .stat-row {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin: 32px 0;
+    }
+
+    .stat-block {
+      flex: 1 1 160px;
+      background-color: rgba(30,30,30,0.85);
+      border: 1px solid rgba(255,215,0,0.15);
+      border-left: 3px solid #FFD700;
+      padding: 20px 22px;
+    }
+
+    .stat-number {
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      color: #FFD700;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      line-height: 1.5;
+    }
+
+    /* ─── CTA ─────────────────────────────────────────────────── */
+    .cta-block {
+      text-align: center;
+      padding: 48px 32px;
+      background-color: #111111;
+      border-top: 1px solid rgba(255,215,0,0.15);
+      border-bottom: 1px solid rgba(255,215,0,0.15);
+      margin-top: 60px;
+    }
+
+    .cta-block p {
+      font-size: 0.97rem;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 24px;
+      line-height: 1.75;
+    }
+
+    .btn-cta {
+      display: inline-block;
+      background-color: transparent;
+      border: 2px solid #FFD700;
+      color: #FFD700;
+      font-family: 'Michroma', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 14px 32px;
+      border-radius: 25px;
+      text-decoration: none;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .btn-cta:hover {
+      background-color: #FFD700;
+      color: #1a1a1a;
+    }
+
+    /* ─── Footer ──────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 28px 20px;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    /* ─── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      header { padding: 14px 20px; }
+      .about-content { padding: 40px 20px 60px; }
+      .stat-row { gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Header ─────────────────────────────────────────────── -->
+<header>
+  <div class="site-title">THE PEOPLE'S LEDGER</div>
+  <nav class="header-nav">
+    <a href="index.html" class="nav-link">DIRECTORY</a>
+  </nav>
+</header>
+
+<!-- ─── Hero ───────────────────────────────────────────────── -->
+<section class="hero-banner">
+  <h1>About The People's Ledger</h1>
+  <p>A living record of minority-owned businesses in Kentucky. Built in resistance. Maintained in community.</p>
+</section>
+
+<!-- ─── About Content ──────────────────────────────────────── -->
+<div class="about-content">
+
+  <div class="about-section">
+    <h2>Why This Exists</h2>
+    <p>In 2023, the Kentucky Chamber Foundation's Center for Diversity, Equity, and Inclusion was dissolved under political pressure from an anti-DEI movement that decided visibility was a threat. Along with the Center went MBDKY.com, a directory of over 1,000 certified minority-owned businesses that had taken years to build and represented real economic infrastructure for communities across the Commonwealth.</p>
+    <p>The data didn't disappear because the need disappeared. It disappeared because erasure was the point.</p>
+
+    <div class="pull-quote">
+      <p>The People's Ledger exists because minority-owned businesses in Kentucky deserve to be found, supported, and counted — regardless of what the political climate decides is convenient.</p>
+    </div>
+
+    <p>This directory is a rebuild, a continuation, and a refusal. It pulls from certified government data, community submissions, and ongoing verification to keep the record alive. It is free to search, free to submit to, and free to export. It belongs to the community it serves.</p>
+  </div>
+
+  <div class="about-section">
+    <h2>What's in the Database</h2>
+
+    <div class="stat-row">
+      <div class="stat-block">
+        <div class="stat-number">1,191+</div>
+        <div class="stat-label">Businesses in the directory</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number">100+</div>
+        <div class="stat-label">Kentucky cities represented</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number">20+</div>
+        <div class="stat-label">Industries covered</div>
+      </div>
+    </div>
+
+    <p>Records include Black-owned, Hispanic/Latino-owned, Asian-owned, Native American-owned, women-owned, veteran-owned, and LGBTQ-owned businesses across industries ranging from construction and professional services to food, healthcare, and technology. The database is searchable by name, location, service, and ownership type, and is updated on an ongoing basis.</p>
+    <p>Link status reflects website availability at the time of our last scan, not current business operating status. If a business has closed, relocated, or updated its information, <strong>we want to know</strong>.</p>
+  </div>
+
+  <div class="about-section">
+    <h2>Who Built This</h2>
+    <p>The People's Ledger was built by <strong>Joe Frazier</strong>, an Applied Sociologist, DEI strategist, and founder of <strong>Education to Action LLC</strong> based in Louisville, Kentucky.</p>
+    <p>Joe served as the Founding Executive Director of the Kentucky Chamber Foundation's Center for Diversity, Equity, and Inclusion, where he launched MBDKY.com, coined the phrase <em>Minority Owned, Kentucky Grown</em>, and secured over $500,000 in funding to build minority business visibility infrastructure across the state. When that work was politically dismantled, he rebuilt it on his own terms.</p>
+    <p>This project sits at the intersection of his work as a sociologist, a strategist, and someone who believes data is an act of care. The businesses in this directory are not abstractions. They are neighbors, employers, and anchors in communities that have been systematically underinvested. Keeping them visible matters.</p>
+    <p>Education to Action LLC is a Louisville-based consulting practice focused on organizational equity, community impact, and applied research. Learn more at <a href="https://educationtoaction.net" target="_blank" style="color:#FFD700;">educationtoaction.net</a>.</p>
+  </div>
+
+  <div class="about-section">
+    <h2>How to Help</h2>
+    <p>The directory grows through community participation. If you own a minority-owned business in Kentucky, know one that is not listed, or have updated information for an existing record, use the submission form on the directory page. Every entry is reviewed before it is added.</p>
+    <p>If you are a researcher, journalist, policymaker, or community organization that wants to use this data, all records are available for export in CSV and JSON format directly from the directory. No registration required.</p>
+    <p>If you want to support the ongoing maintenance of this work, reach out through Education to Action LLC.</p>
+  </div>
+
+</div>
+
+<!-- ─── CTA ────────────────────────────────────────────────── -->
+<div class="cta-block">
+  <p>Ready to search the directory or add your business?</p>
+  <a href="index.html" class="btn-cta">GO TO THE DIRECTORY</a>
+</div>
+
+<!-- ─── Footer ────────────────────────────────────────────── -->
+<footer>
+  &copy; 2025 Education to Action LLC &nbsp;|&nbsp; The People's Ledger &nbsp;|&nbsp; Louisville, Kentucky
+</footer>
+
+</body>
+</html>
