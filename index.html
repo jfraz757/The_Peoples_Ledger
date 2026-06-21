@@ -44,16 +44,19 @@
 
     .header-nav {
       margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     .nav-link {
       font-family: 'Michroma', sans-serif;
       font-size: 0.75rem;
       letter-spacing: 2px;
-      color: rgba(255,215,0,0.65);
+      color: #FFD700;
       text-decoration: none;
       padding: 6px 14px;
-      border: 1px solid rgba(255,215,0,0.3);
+      border: 1px solid rgba(255,215,0,0.75);
       border-radius: 20px;
       transition: all 0.2s;
     }
@@ -62,6 +65,24 @@
       color: #1a1a1a;
       background-color: #FFD700;
       border-color: #FFD700;
+    }
+
+    .nav-link-submit {
+      font-family: 'Michroma', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      color: #1a1a1a;
+      background-color: #FFD700;
+      border: 1px solid #FFD700;
+      border-radius: 20px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-link-submit:hover {
+      background-color: transparent;
+      color: #FFD700;
     }
 
     .hero-tagline {
@@ -858,6 +879,7 @@
   <div class="site-title">THE PEOPLE'S LEDGER</div>
   <nav class="header-nav">
     <a href="about.html" class="nav-link">ABOUT</a>
+    <button class="nav-link-submit" onclick="openModal()">+ SUBMIT A BUSINESS</button>
   </nav>
 </header>
 
@@ -945,7 +967,6 @@
 <div class="export-bar">
   <button class="btn-export" onclick="exportAll('csv')">⬇ Export Current Results (CSV)</button>
   <button class="btn-export" onclick="exportAll('json')">⬇ Export Current Results (JSON)</button>
-  <button class="btn-export" style="border-color:#FFD700;color:#FFD700;font-weight:700;" onclick="openModal()">+ Submit a Business or Correction</button>
 </div>
 
 <!-- ─── Results ─────────────────────────────────────────────── -->
