@@ -1,5 +1,6 @@
 # The People's Ledger
 ### Kentucky Minority Business Directory
+**Live at [thepeoplesledger.net](https://thepeoplesledger.net)**
 ### Open-source data infrastructure by Joe Frazier / Education to Action LLC
 
 ---
@@ -202,8 +203,8 @@ That's the model I bring to all of my work: gather the best available input, eva
 
 **1. Clone the repository**
 ```
-git clone https://github.com/jfraz757/Claude_KY_Biz_Databse.git
-cd Claude_KY_Biz_Databse
+git clone https://github.com/jfraz757/The_Peoples_Ledger.git
+cd The_Peoples_Ledger
 ```
 
 **2. Install dependencies**
@@ -345,5 +346,8 @@ Pull requests are welcome. If you adapt this script for another state, add suppo
 **Joe Frazier**
 Applied Sociologist, DEI Strategist, Founder -- Education to Action LLC
 Louisville, KY | [educationtoaction.net](https://educationtoaction.net) | [linkedin.com/in/jfraz1](https://linkedin.com/in/jfraz1)
+
+**The People's Ledger** is live at [thepeoplesledger.net](https://thepeoplesledger.net)
+Open source at [github.com/jfraz757/The_Peoples_Ledger](https://github.com/jfraz757/The_Peoples_Ledger)
 
 *Built collaboratively with Claude (Anthropic) and Gemini (Google), May--June 2026.*
