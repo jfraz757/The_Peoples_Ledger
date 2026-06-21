@@ -1,0 +1,11 @@
+# API keys -- never upload these
+.env
+
+# Output files -- keep data local
+ky_minority_businesses.csv
+checkpoint_ky_minority_businesses.csv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
