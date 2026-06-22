@@ -1647,9 +1647,15 @@
   }
 
   // ─── MODAL ──────────────────────────────────────────────
+  let businessNamesLoaded = false;
+
   function openModal() {
     document.getElementById("modal-overlay").classList.add("visible");
     document.body.style.overflow = "hidden";
+    // Lazy-load business names only when modal first opens
+    if (!businessNamesLoaded) {
+      loadBusinessNames().then(() => { businessNamesLoaded = true; });
+    }
   }
 
   function closeModal() {
@@ -1961,7 +1967,6 @@
     } catch(e) {}
 
     render();
-    loadBusinessNames();
   })();
 </script>
 </body>
