@@ -1081,52 +1081,10 @@
     Filter by Ownership
     <span class="chevron">▼</span>
   </div>
-  <div class="filter-collapsible" id="ownership-collapsible">
-    <div class="filter-row" id="filter-pills">
-      <button class="pill active" data-type="All" onclick="filterByType(this)">All</button>
-      <button class="pill" data-type="Black-Owned" onclick="filterByType(this)">Black-Owned</button>
-      <button class="pill" data-type="Women-Owned" onclick="filterByType(this)">Women-Owned</button>
-      <button class="pill" data-type="Latine-Owned" onclick="filterByType(this)">Latine-Owned</button>
-      <button class="pill" data-type="Asian-Owned" onclick="filterByType(this)">Asian-Owned</button>
-      <button class="pill" data-type="LGBTQ+-Owned" onclick="filterByType(this)">LGBTQ+-Owned</button>
-      <button class="pill" data-type="Veteran-Owned" onclick="filterByType(this)">Veteran-Owned</button>
-      <button class="pill" data-type="Native American-Owned" onclick="filterByType(this)">Native American-Owned</button>
-      <button class="pill" data-type="Disability-Owned" onclick="filterByType(this)">Disability-Owned</button>
-      <button class="pill" data-type="Muslim-Owned" onclick="filterByType(this)">Muslim-Owned</button>
-    </div>
-  </div>
 
   <div class="filter-label filter-toggle" id="industry-toggle" style="margin-top:16px;" onclick="toggleFilter('industry')">
     Filter by Industry
     <span class="chevron">▼</span>
-  </div>
-  <div class="filter-collapsible" id="industry-collapsible">
-    <div class="filter-row" id="industry-pills">
-      <button class="pill industry-pill active" data-industry="All" onclick="filterByIndustry(this)">All Industries</button>
-      <button class="pill industry-pill" data-industry="Accounting and Finance" onclick="filterByIndustry(this)">Accounting and Finance</button>
-      <button class="pill industry-pill" data-industry="Architecture and Engineering" onclick="filterByIndustry(this)">Architecture and Engineering</button>
-      <button class="pill industry-pill" data-industry="Arts and Entertainment" onclick="filterByIndustry(this)">Arts and Entertainment</button>
-      <button class="pill industry-pill" data-industry="Business Consulting" onclick="filterByIndustry(this)">Business Consulting</button>
-      <button class="pill industry-pill" data-industry="Construction and Remodeling" onclick="filterByIndustry(this)">Construction and Remodeling</button>
-      <button class="pill industry-pill" data-industry="Education and Training" onclick="filterByIndustry(this)">Education and Training</button>
-      <button class="pill industry-pill" data-industry="Food and Beverage" onclick="filterByIndustry(this)">Food and Beverage</button>
-      <button class="pill industry-pill" data-industry="Government and Public Services" onclick="filterByIndustry(this)">Government and Public Services</button>
-      <button class="pill industry-pill" data-industry="Health and Wellness" onclick="filterByIndustry(this)">Health and Wellness</button>
-      <button class="pill industry-pill" data-industry="Human Resources and DEI" onclick="filterByIndustry(this)">Human Resources and DEI</button>
-      <button class="pill industry-pill" data-industry="Information Technology" onclick="filterByIndustry(this)">Information Technology</button>
-      <button class="pill industry-pill" data-industry="Insurance and Risk Management" onclick="filterByIndustry(this)">Insurance and Risk Management</button>
-      <button class="pill industry-pill" data-industry="Legal Services" onclick="filterByIndustry(this)">Legal Services</button>
-      <button class="pill industry-pill" data-industry="Logistics and Transportation" onclick="filterByIndustry(this)">Logistics and Transportation</button>
-      <button class="pill industry-pill" data-industry="Manufacturing and Industrial" onclick="filterByIndustry(this)">Manufacturing and Industrial</button>
-      <button class="pill industry-pill" data-industry="Marketing and Communications" onclick="filterByIndustry(this)">Marketing and Communications</button>
-      <button class="pill industry-pill" data-industry="Media and Publishing" onclick="filterByIndustry(this)">Media and Publishing</button>
-      <button class="pill industry-pill" data-industry="Non-Profit and Social Services" onclick="filterByIndustry(this)">Non-Profit and Social Services</button>
-      <button class="pill industry-pill" data-industry="Real Estate and Property Management" onclick="filterByIndustry(this)">Real Estate and Property Management</button>
-      <button class="pill industry-pill" data-industry="Retail and E-Commerce" onclick="filterByIndustry(this)">Retail and E-Commerce</button>
-      <button class="pill industry-pill" data-industry="Staffing and Recruiting" onclick="filterByIndustry(this)">Staffing and Recruiting</button>
-      <button class="pill industry-pill" data-industry="Travel and Hospitality" onclick="filterByIndustry(this)">Travel and Hospitality</button>
-      <button class="pill industry-pill" data-industry="Other Professional Services" onclick="filterByIndustry(this)">Other Professional Services</button>
-    </div>
   </div>
 
   <div class="suggestions-box" id="suggestions-box">
@@ -1134,6 +1092,51 @@
     <div id="suggestions-chips"></div>
   </div>
 </section>
+
+<!-- Filter panels — outside search section so sticky positioning works -->
+<div class="filter-collapsible" id="ownership-collapsible">
+  <div class="filter-row" id="filter-pills">
+    <button class="pill active" data-type="All" onclick="filterByType(this)">All</button>
+    <button class="pill" data-type="Black-Owned" onclick="filterByType(this)">Black-Owned</button>
+    <button class="pill" data-type="Women-Owned" onclick="filterByType(this)">Women-Owned</button>
+    <button class="pill" data-type="Latine-Owned" onclick="filterByType(this)">Latine-Owned</button>
+    <button class="pill" data-type="Asian-Owned" onclick="filterByType(this)">Asian-Owned</button>
+    <button class="pill" data-type="LGBTQ+-Owned" onclick="filterByType(this)">LGBTQ+-Owned</button>
+    <button class="pill" data-type="Veteran-Owned" onclick="filterByType(this)">Veteran-Owned</button>
+    <button class="pill" data-type="Native American-Owned" onclick="filterByType(this)">Native American-Owned</button>
+    <button class="pill" data-type="Disability-Owned" onclick="filterByType(this)">Disability-Owned</button>
+    <button class="pill" data-type="Muslim-Owned" onclick="filterByType(this)">Muslim-Owned</button>
+  </div>
+</div>
+
+<div class="filter-collapsible" id="industry-collapsible">
+  <div class="filter-row" id="industry-pills">
+    <button class="pill industry-pill active" data-industry="All" onclick="filterByIndustry(this)">All Industries</button>
+    <button class="pill industry-pill" data-industry="Accounting and Finance" onclick="filterByIndustry(this)">Accounting and Finance</button>
+    <button class="pill industry-pill" data-industry="Architecture and Engineering" onclick="filterByIndustry(this)">Architecture and Engineering</button>
+    <button class="pill industry-pill" data-industry="Arts and Entertainment" onclick="filterByIndustry(this)">Arts and Entertainment</button>
+    <button class="pill industry-pill" data-industry="Business Consulting" onclick="filterByIndustry(this)">Business Consulting</button>
+    <button class="pill industry-pill" data-industry="Construction and Remodeling" onclick="filterByIndustry(this)">Construction and Remodeling</button>
+    <button class="pill industry-pill" data-industry="Education and Training" onclick="filterByIndustry(this)">Education and Training</button>
+    <button class="pill industry-pill" data-industry="Food and Beverage" onclick="filterByIndustry(this)">Food and Beverage</button>
+    <button class="pill industry-pill" data-industry="Government and Public Services" onclick="filterByIndustry(this)">Government and Public Services</button>
+    <button class="pill industry-pill" data-industry="Health and Wellness" onclick="filterByIndustry(this)">Health and Wellness</button>
+    <button class="pill industry-pill" data-industry="Human Resources and DEI" onclick="filterByIndustry(this)">Human Resources and DEI</button>
+    <button class="pill industry-pill" data-industry="Information Technology" onclick="filterByIndustry(this)">Information Technology</button>
+    <button class="pill industry-pill" data-industry="Insurance and Risk Management" onclick="filterByIndustry(this)">Insurance and Risk Management</button>
+    <button class="pill industry-pill" data-industry="Legal Services" onclick="filterByIndustry(this)">Legal Services</button>
+    <button class="pill industry-pill" data-industry="Logistics and Transportation" onclick="filterByIndustry(this)">Logistics and Transportation</button>
+    <button class="pill industry-pill" data-industry="Manufacturing and Industrial" onclick="filterByIndustry(this)">Manufacturing and Industrial</button>
+    <button class="pill industry-pill" data-industry="Marketing and Communications" onclick="filterByIndustry(this)">Marketing and Communications</button>
+    <button class="pill industry-pill" data-industry="Media and Publishing" onclick="filterByIndustry(this)">Media and Publishing</button>
+    <button class="pill industry-pill" data-industry="Non-Profit and Social Services" onclick="filterByIndustry(this)">Non-Profit and Social Services</button>
+    <button class="pill industry-pill" data-industry="Real Estate and Property Management" onclick="filterByIndustry(this)">Real Estate and Property Management</button>
+    <button class="pill industry-pill" data-industry="Retail and E-Commerce" onclick="filterByIndustry(this)">Retail and E-Commerce</button>
+    <button class="pill industry-pill" data-industry="Staffing and Recruiting" onclick="filterByIndustry(this)">Staffing and Recruiting</button>
+    <button class="pill industry-pill" data-industry="Travel and Hospitality" onclick="filterByIndustry(this)">Travel and Hospitality</button>
+    <button class="pill industry-pill" data-industry="Other Professional Services" onclick="filterByIndustry(this)">Other Professional Services</button>
+  </div>
+</div>
 
 <!-- ─── Export Bar ──────────────────────────────────────── -->
 <div class="export-bar">
