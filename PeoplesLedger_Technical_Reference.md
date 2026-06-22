@@ -168,7 +168,7 @@ Admin reads /rest/v1/submissions (all statuses, ordered by submitted_at desc)
   PATCH submissions set status = "approved"
 ```
 
-**Important distinction from CandidateVoice:** Update submissions do NOT auto-apply to the `businesses` table. When you approve an update submission in admin.html, it marks the submission approved and shows an alert saying "Remember to manually apply the correction in the businesses table." You must go into Supabase and edit the record yourself.
+**Update submissions now auto-apply to the `businesses` table (updated June 2026).** When you approve an update submission in admin.html, the admin looks up the business by exact name and PATCHes only the fields that were submitted. Blank fields are ignored. If no exact name match is found, the admin alerts you to apply the correction manually. Any free-text additional notes are shown in the approval alert for your review but do not auto-apply.
 
 ### Data pipeline flow (scraper → live)
 ```

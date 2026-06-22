@@ -1253,10 +1253,99 @@
           <div class="ac-dropdown" id="update-name-dropdown"></div>
         </div>
       </div>
-      <div class="form-group">
-        <label>What Needs to be Corrected? *</label>
-        <textarea id="update-notes" placeholder="Describe what is wrong and what the correct information is..."></textarea>
+
+      <div class="form-section-label" style="margin-top:20px;">Corrected Information <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);letter-spacing:1px;">— only fill in fields that need to change</span></div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="upd-phone" placeholder="Corrected phone number" />
+        </div>
+        <div class="form-group">
+          <label>Website</label>
+          <input type="text" id="upd-website" placeholder="Corrected website URL" />
+        </div>
       </div>
+      <div class="form-group">
+        <label>Address</label>
+        <input type="text" id="upd-address" placeholder="Corrected address" />
+      </div>
+      <div class="form-group">
+        <label>Services / Products</label>
+        <textarea id="upd-services" placeholder="Corrected services description..." style="min-height:70px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Industry</label>
+        <select id="upd-industry">
+          <option value="">No change</option>
+          <option value="Accounting and Finance">Accounting and Finance</option>
+          <option value="Architecture and Engineering">Architecture and Engineering</option>
+          <option value="Arts and Entertainment">Arts and Entertainment</option>
+          <option value="Business Consulting">Business Consulting</option>
+          <option value="Construction and Remodeling">Construction and Remodeling</option>
+          <option value="Education and Training">Education and Training</option>
+          <option value="Food and Beverage">Food and Beverage</option>
+          <option value="Government and Public Services">Government and Public Services</option>
+          <option value="Health and Wellness">Health and Wellness</option>
+          <option value="Human Resources and DEI">Human Resources and DEI</option>
+          <option value="Information Technology">Information Technology</option>
+          <option value="Insurance and Risk Management">Insurance and Risk Management</option>
+          <option value="Legal Services">Legal Services</option>
+          <option value="Logistics and Transportation">Logistics and Transportation</option>
+          <option value="Manufacturing and Industrial">Manufacturing and Industrial</option>
+          <option value="Marketing and Communications">Marketing and Communications</option>
+          <option value="Media and Publishing">Media and Publishing</option>
+          <option value="Non-Profit and Social Services">Non-Profit and Social Services</option>
+          <option value="Real Estate and Property Management">Real Estate and Property Management</option>
+          <option value="Retail and E-Commerce">Retail and E-Commerce</option>
+          <option value="Staffing and Recruiting">Staffing and Recruiting</option>
+          <option value="Travel and Hospitality">Travel and Hospitality</option>
+          <option value="Other Professional Services">Other Professional Services</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ownership Type (select all that apply)</label>
+        <div class="checkbox-group">
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Black-Owned" /> Black-Owned</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Latine-Owned" /> Latine-Owned</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Asian-Owned" /> Asian-Owned</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Native American-Owned" /> Native American-Owned</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Women-Owned" /> Women-Owned</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="LGBTQ+-Owned" /> LGBTQ+-Owned</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Veteran-Owned" /> Veteran-Owned</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Disability-Owned" /> Disability-Owned</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Muslim-Owned" /> Muslim-Owned</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Certification Type (select all that apply)</label>
+        <div class="checkbox-group">
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="DBE" /> DBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="MBE" /> MBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="WBE" /> WBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="MWBE" /> MWBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="SBE" /> SBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="ACDBE" /> ACDBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="VBE" /> VBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="SDVBE" /> SDVBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="LGBTBE" /> LGBTBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="Not Certified" /> Not Certified</label>
+          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="Unknown" /> Unknown</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Kentucky Based?</label>
+        <select id="upd-ky">
+          <option value="">No change</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Additional Notes</label>
+        <textarea id="update-notes" placeholder="Anything else that needs correction or context..." style="min-height:70px;"></textarea>
+      </div>
+
       <hr class="form-divider" />
       <div class="form-section-label">Your Information</div>
       <div class="form-row">
@@ -1644,12 +1733,32 @@
 
   async function submitUpdate() {
     const name  = document.getElementById("update-name").value.trim();
-    const notes = document.getElementById("update-notes").value.trim();
     const sName = document.getElementById("update-submitter-name").value.trim();
     const sEmail= document.getElementById("update-submitter-email").value.trim();
 
-    if (!name || !notes || !sName || !sEmail) {
-      alert("Please fill in all required fields.");
+    if (!name || !sName || !sEmail) {
+      alert("Please fill in the required fields: Business Name, Your Name, and Your Email.");
+      return;
+    }
+
+    // Collect only filled structured fields
+    const phone    = document.getElementById("upd-phone").value.trim() || null;
+    const website  = document.getElementById("upd-website").value.trim() || null;
+    const address  = document.getElementById("upd-address").value.trim() || null;
+    const services = document.getElementById("upd-services").value.trim() || null;
+    const industry = document.getElementById("upd-industry").value || null;
+    const ky       = document.getElementById("upd-ky").value || null;
+    const notes    = document.getElementById("update-notes").value.trim() || null;
+
+    const ownershipChecked = [...document.querySelectorAll("input[name='upd-ownership']:checked")];
+    const minorityType = ownershipChecked.length ? ownershipChecked.map(c => c.value).join(", ") : null;
+
+    const certChecked = [...document.querySelectorAll("input[name='upd-cert']:checked")];
+    const certType = certChecked.length ? certChecked.map(c => c.value).join(", ") : null;
+
+    // Require at least one field to be filled
+    if (!phone && !website && !address && !services && !industry && !ky && !minorityType && !certType && !notes) {
+      alert("Please fill in at least one field to correct.");
       return;
     }
 
@@ -1667,12 +1776,20 @@
           Prefer: "return=minimal"
         },
         body: JSON.stringify({
-          submission_type: "update",
-          business_name:   name,
-          update_notes:    notes,
-          submitter_name:  sName,
-          submitter_email: sEmail,
-          status:          "pending"
+          submission_type:    "update",
+          business_name:      name,
+          phone:              phone,
+          website:            website,
+          address:            address,
+          services_products:  services,
+          industry:           industry,
+          minority_type:      minorityType,
+          certification_type: certType,
+          kentucky_based:     ky,
+          update_notes:       notes,
+          submitter_name:     sName,
+          submitter_email:    sEmail,
+          status:             "pending"
         })
       });
 
