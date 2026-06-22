@@ -957,6 +957,35 @@
         padding: 4px 10px;
       }
 
+      .filter-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        padding: 8px 0;
+        user-select: none;
+      }
+
+      .filter-toggle .chevron {
+        font-size: 0.75rem;
+        color: rgba(255,215,0,0.5);
+        transition: transform 0.25s;
+        margin-left: 8px;
+      }
+
+      .filter-toggle.open .chevron {
+        transform: rotate(180deg);
+      }
+
+      .filter-collapsible {
+        display: none;
+        padding-bottom: 6px;
+      }
+
+      .filter-collapsible.open {
+        display: block;
+      }
+
       .export-bar {
         flex-direction: column;
         padding: 0 16px 12px;
@@ -1048,46 +1077,58 @@
     <button class="btn-search" onclick="runSearch()">SEARCH</button>
   </div>
 
-  <div class="filter-label">Filter by Ownership</div>
-  <div class="filter-row" id="filter-pills">
-    <button class="pill active" data-type="All" onclick="filterByType(this)">All</button>
-    <button class="pill" data-type="Black-Owned" onclick="filterByType(this)">Black-Owned</button>
-    <button class="pill" data-type="Women-Owned" onclick="filterByType(this)">Women-Owned</button>
-    <button class="pill" data-type="Latine-Owned" onclick="filterByType(this)">Latine-Owned</button>
-    <button class="pill" data-type="Asian-Owned" onclick="filterByType(this)">Asian-Owned</button>
-    <button class="pill" data-type="LGBTQ+-Owned" onclick="filterByType(this)">LGBTQ+-Owned</button>
-    <button class="pill" data-type="Veteran-Owned" onclick="filterByType(this)">Veteran-Owned</button>
-    <button class="pill" data-type="Native American-Owned" onclick="filterByType(this)">Native American-Owned</button>
-    <button class="pill" data-type="Disability-Owned" onclick="filterByType(this)">Disability-Owned</button>
-    <button class="pill" data-type="Muslim-Owned" onclick="filterByType(this)">Muslim-Owned</button>
+  <!-- Ownership filter — collapsible on mobile -->
+  <div class="filter-label filter-toggle" id="ownership-toggle" onclick="toggleFilter('ownership')">
+    Filter by Ownership
+    <span class="chevron">▼</span>
+  </div>
+  <div class="filter-collapsible" id="ownership-collapsible">
+    <div class="filter-row" id="filter-pills">
+      <button class="pill active" data-type="All" onclick="filterByType(this)">All</button>
+      <button class="pill" data-type="Black-Owned" onclick="filterByType(this)">Black-Owned</button>
+      <button class="pill" data-type="Women-Owned" onclick="filterByType(this)">Women-Owned</button>
+      <button class="pill" data-type="Latine-Owned" onclick="filterByType(this)">Latine-Owned</button>
+      <button class="pill" data-type="Asian-Owned" onclick="filterByType(this)">Asian-Owned</button>
+      <button class="pill" data-type="LGBTQ+-Owned" onclick="filterByType(this)">LGBTQ+-Owned</button>
+      <button class="pill" data-type="Veteran-Owned" onclick="filterByType(this)">Veteran-Owned</button>
+      <button class="pill" data-type="Native American-Owned" onclick="filterByType(this)">Native American-Owned</button>
+      <button class="pill" data-type="Disability-Owned" onclick="filterByType(this)">Disability-Owned</button>
+      <button class="pill" data-type="Muslim-Owned" onclick="filterByType(this)">Muslim-Owned</button>
+    </div>
   </div>
 
-  <div class="filter-label" style="margin-top:16px;">Filter by Industry</div>
-  <div class="filter-row" id="industry-pills">
-    <button class="pill industry-pill active" data-industry="All" onclick="filterByIndustry(this)">All Industries</button>
-    <button class="pill industry-pill" data-industry="Accounting and Finance" onclick="filterByIndustry(this)">Accounting and Finance</button>
-    <button class="pill industry-pill" data-industry="Architecture and Engineering" onclick="filterByIndustry(this)">Architecture and Engineering</button>
-    <button class="pill industry-pill" data-industry="Arts and Entertainment" onclick="filterByIndustry(this)">Arts and Entertainment</button>
-    <button class="pill industry-pill" data-industry="Business Consulting" onclick="filterByIndustry(this)">Business Consulting</button>
-    <button class="pill industry-pill" data-industry="Construction and Remodeling" onclick="filterByIndustry(this)">Construction and Remodeling</button>
-    <button class="pill industry-pill" data-industry="Education and Training" onclick="filterByIndustry(this)">Education and Training</button>
-    <button class="pill industry-pill" data-industry="Food and Beverage" onclick="filterByIndustry(this)">Food and Beverage</button>
-    <button class="pill industry-pill" data-industry="Government and Public Services" onclick="filterByIndustry(this)">Government and Public Services</button>
-    <button class="pill industry-pill" data-industry="Health and Wellness" onclick="filterByIndustry(this)">Health and Wellness</button>
-    <button class="pill industry-pill" data-industry="Human Resources and DEI" onclick="filterByIndustry(this)">Human Resources and DEI</button>
-    <button class="pill industry-pill" data-industry="Information Technology" onclick="filterByIndustry(this)">Information Technology</button>
-    <button class="pill industry-pill" data-industry="Insurance and Risk Management" onclick="filterByIndustry(this)">Insurance and Risk Management</button>
-    <button class="pill industry-pill" data-industry="Legal Services" onclick="filterByIndustry(this)">Legal Services</button>
-    <button class="pill industry-pill" data-industry="Logistics and Transportation" onclick="filterByIndustry(this)">Logistics and Transportation</button>
-    <button class="pill industry-pill" data-industry="Manufacturing and Industrial" onclick="filterByIndustry(this)">Manufacturing and Industrial</button>
-    <button class="pill industry-pill" data-industry="Marketing and Communications" onclick="filterByIndustry(this)">Marketing and Communications</button>
-    <button class="pill industry-pill" data-industry="Media and Publishing" onclick="filterByIndustry(this)">Media and Publishing</button>
-    <button class="pill industry-pill" data-industry="Non-Profit and Social Services" onclick="filterByIndustry(this)">Non-Profit and Social Services</button>
-    <button class="pill industry-pill" data-industry="Real Estate and Property Management" onclick="filterByIndustry(this)">Real Estate and Property Management</button>
-    <button class="pill industry-pill" data-industry="Retail and E-Commerce" onclick="filterByIndustry(this)">Retail and E-Commerce</button>
-    <button class="pill industry-pill" data-industry="Staffing and Recruiting" onclick="filterByIndustry(this)">Staffing and Recruiting</button>
-    <button class="pill industry-pill" data-industry="Travel and Hospitality" onclick="filterByIndustry(this)">Travel and Hospitality</button>
-    <button class="pill industry-pill" data-industry="Other Professional Services" onclick="filterByIndustry(this)">Other Professional Services</button>
+  <!-- Industry filter — collapsible on mobile -->
+  <div class="filter-label filter-toggle" id="industry-toggle" style="margin-top:16px;" onclick="toggleFilter('industry')">
+    Filter by Industry
+    <span class="chevron">▼</span>
+  </div>
+  <div class="filter-collapsible" id="industry-collapsible">
+    <div class="filter-row" id="industry-pills">
+      <button class="pill industry-pill active" data-industry="All" onclick="filterByIndustry(this)">All Industries</button>
+      <button class="pill industry-pill" data-industry="Accounting and Finance" onclick="filterByIndustry(this)">Accounting and Finance</button>
+      <button class="pill industry-pill" data-industry="Architecture and Engineering" onclick="filterByIndustry(this)">Architecture and Engineering</button>
+      <button class="pill industry-pill" data-industry="Arts and Entertainment" onclick="filterByIndustry(this)">Arts and Entertainment</button>
+      <button class="pill industry-pill" data-industry="Business Consulting" onclick="filterByIndustry(this)">Business Consulting</button>
+      <button class="pill industry-pill" data-industry="Construction and Remodeling" onclick="filterByIndustry(this)">Construction and Remodeling</button>
+      <button class="pill industry-pill" data-industry="Education and Training" onclick="filterByIndustry(this)">Education and Training</button>
+      <button class="pill industry-pill" data-industry="Food and Beverage" onclick="filterByIndustry(this)">Food and Beverage</button>
+      <button class="pill industry-pill" data-industry="Government and Public Services" onclick="filterByIndustry(this)">Government and Public Services</button>
+      <button class="pill industry-pill" data-industry="Health and Wellness" onclick="filterByIndustry(this)">Health and Wellness</button>
+      <button class="pill industry-pill" data-industry="Human Resources and DEI" onclick="filterByIndustry(this)">Human Resources and DEI</button>
+      <button class="pill industry-pill" data-industry="Information Technology" onclick="filterByIndustry(this)">Information Technology</button>
+      <button class="pill industry-pill" data-industry="Insurance and Risk Management" onclick="filterByIndustry(this)">Insurance and Risk Management</button>
+      <button class="pill industry-pill" data-industry="Legal Services" onclick="filterByIndustry(this)">Legal Services</button>
+      <button class="pill industry-pill" data-industry="Logistics and Transportation" onclick="filterByIndustry(this)">Logistics and Transportation</button>
+      <button class="pill industry-pill" data-industry="Manufacturing and Industrial" onclick="filterByIndustry(this)">Manufacturing and Industrial</button>
+      <button class="pill industry-pill" data-industry="Marketing and Communications" onclick="filterByIndustry(this)">Marketing and Communications</button>
+      <button class="pill industry-pill" data-industry="Media and Publishing" onclick="filterByIndustry(this)">Media and Publishing</button>
+      <button class="pill industry-pill" data-industry="Non-Profit and Social Services" onclick="filterByIndustry(this)">Non-Profit and Social Services</button>
+      <button class="pill industry-pill" data-industry="Real Estate and Property Management" onclick="filterByIndustry(this)">Real Estate and Property Management</button>
+      <button class="pill industry-pill" data-industry="Retail and E-Commerce" onclick="filterByIndustry(this)">Retail and E-Commerce</button>
+      <button class="pill industry-pill" data-industry="Staffing and Recruiting" onclick="filterByIndustry(this)">Staffing and Recruiting</button>
+      <button class="pill industry-pill" data-industry="Travel and Hospitality" onclick="filterByIndustry(this)">Travel and Hospitality</button>
+      <button class="pill industry-pill" data-industry="Other Professional Services" onclick="filterByIndustry(this)">Other Professional Services</button>
+    </div>
   </div>
 
   <div class="suggestions-box" id="suggestions-box">
@@ -1841,7 +1882,7 @@
           + `<strong style="color:#FFD700;">${b.business_name.slice(idx, idx + query.length)}</strong>`
           + b.business_name.slice(idx + query.length);
       const sub  = b.address ? `<div class="ac-item-sub">${b.address}</div>` : "";
-      const safeName = b.business_name.replace(/'/g, "&#39;");
+      const safeName = b.business_name.replace(/\/g, "\\").replace(/'/g, "\'");
       return `<div class="ac-item" data-name="${b.business_name}" onclick="${onSelect}('${safeName}')">
         <div class="ac-item-name">${name}</div>${sub}
       </div>`;
@@ -1931,6 +1972,38 @@
       document.getElementById("update-name-dropdown").classList.remove("visible");
     }
   });
+
+  // ─── COLLAPSIBLE FILTERS (mobile only) ──────────────────────
+  const isMobile = () => window.innerWidth <= 768;
+
+  function toggleFilter(which) {
+    if (!isMobile()) return;
+    const toggle      = document.getElementById(which + "-toggle");
+    const collapsible = document.getElementById(which + "-collapsible");
+    const isOpen      = collapsible.classList.contains("open");
+    toggle.classList.toggle("open", !isOpen);
+    collapsible.classList.toggle("open", !isOpen);
+  }
+
+  function initFilters() {
+    // On mobile, start collapsed. On desktop, always show.
+    const ownership   = document.getElementById("ownership-collapsible");
+    const industry    = document.getElementById("industry-collapsible");
+    const owToggle    = document.getElementById("ownership-toggle");
+    const indToggle   = document.getElementById("industry-toggle");
+    if (isMobile()) {
+      ownership.classList.remove("open");
+      industry.classList.remove("open");
+      owToggle.classList.remove("open");
+      indToggle.classList.remove("open");
+    } else {
+      ownership.classList.add("open");
+      industry.classList.add("open");
+    }
+  }
+
+  window.addEventListener("resize", initFilters);
+  initFilters();
 
   // ─── MOBILE NAV ─────────────────────────────────────────────
   function toggleMobileNav() {
