@@ -26,7 +26,7 @@ load_dotenv()
 # ── CONFIG ───────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-CSV_PATH     = r"C:\Users\jfraz\Claude_KY_Biz_Databse\ky_minority_businesses_cleaned.csv"
+CSV_PATH     = r"C:\Users\jfraz\The_Peoples_Ledger\ky_minority_businesses_cleaned.csv"
 BATCH_SIZE   = 100
 # ─────────────────────────────────────────────────────────────────────────────
 

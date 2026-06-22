@@ -11,7 +11,7 @@ Usage:
 import pandas as pd
 import dtale
 
-CSV_PATH = r"C:\Users\jfraz\Claude_KY_Biz_Databse\ky_minority_businesses.csv"
+CSV_PATH = r"C:\Users\jfraz\The_Peoples_Ledger\ky_minority_businesses.csv"
 
 print("Loading database...")
 df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")

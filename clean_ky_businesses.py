@@ -18,8 +18,8 @@ import pandas as pd
 import os
 
 # ── CONFIG ───────────────────────────────────────────────────────────────────
-INPUT_FILE  = r"C:\Users\jfraz\Claude_KY_Biz_Databse\ky_minority_businesses.csv"
-OUTPUT_FILE = r"C:\Users\jfraz\Claude_KY_Biz_Databse\ky_minority_businesses_cleaned.csv"
+INPUT_FILE  = r"C:\Users\jfraz\The_Peoples_Ledger\ky_minority_businesses.csv"
+OUTPUT_FILE = r"C:\Users\jfraz\The_Peoples_Ledger\ky_minority_businesses_cleaned.csv"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
