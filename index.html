@@ -1841,7 +1841,7 @@
           + `<strong style="color:#FFD700;">${b.business_name.slice(idx, idx + query.length)}</strong>`
           + b.business_name.slice(idx + query.length);
       const sub  = b.address ? `<div class="ac-item-sub">${b.address}</div>` : "";
-      const safeName = b.business_name.replace(/\/g, "\\").replace(/'/g, "\'");
+      const safeName = b.business_name.replace(/'/g, "&#39;");
       return `<div class="ac-item" data-name="${b.business_name}" onclick="${onSelect}('${safeName}')">
         <div class="ac-item-name">${name}</div>${sub}
       </div>`;
