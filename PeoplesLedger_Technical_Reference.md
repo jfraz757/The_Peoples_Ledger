@@ -271,7 +271,7 @@ All scripts use `.env` for credentials. Run from the project root. Python path: 
 - Kentucky Finance and Administration Cabinet (MWBE certification listings — `.xlsx`, converted to CSV)
 - City of Louisville Human Relations Commission (diversitycompliance.com)
 
-**Note from June 2026 data run:** Kentucky legislators removed minority type identification from state databases. The three source databases no longer distinguish what kind of MBE a company is. This data limitation affects future scraper runs.
+**Note from June 2026 data run:** The KY Transportation Cabinet and KY Finance & Administration Cabinet no longer include minority type identification in their exports — a result of anti-DEI legislative pressure. However, the **Louisville HRC database still includes both `Ethnicity` and `Certification Type` fields** in its CSV export, confirmed June 2026. A merge of HRC data (277 records, 208 unique companies) against the existing Supabase database was completed in June 2026, adding `certification_type` and `business_category` data where matches were found. The HRC export remains a reliable source for Louisville-area businesses with government certification data.
 
 ---
 
@@ -305,7 +305,7 @@ RLS is enabled on the `businesses` table. Per the README, public read, insert, a
 - Minority type detection in the scraper depends on ownership language appearing in page text — badges and images are not read.
 - Several national directories (NMSDC, WBENC, NGLCC) use JavaScript rendering and can't be scraped with standard HTTP requests. Selenium/Playwright would be needed.
 - This is not a substitute for certified MBE data for procurement compliance.
-- State source databases no longer include minority type fields (as of 2026 legislative session).
+- The KY Transportation Cabinet and KY Finance & Administration Cabinet no longer include minority type fields in exports. The Louisville HRC database still does — it includes both `Ethnicity` and `Certification Type` columns and should be downloaded and merged on each quarterly data refresh.
 
 ---
 
