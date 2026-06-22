@@ -768,6 +768,84 @@
 
     footer a:hover { color: #FFD700; }
 
+    /* ─── Hamburger Menu ─────────────────────────────────────── */
+    .hamburger-btn {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      margin-left: auto;
+      z-index: 200;
+    }
+
+    .hamburger-btn span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background-color: #FFD700;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+      transform-origin: center;
+    }
+
+    .hamburger-btn.open span:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
+    }
+
+    .hamburger-btn.open span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .hamburger-btn.open span:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
+    }
+
+    .mobile-nav-drawer {
+      display: none;
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 240px;
+      height: 100vh;
+      background-color: rgba(20, 20, 20, 0.98);
+      border-left: 1px solid rgba(255, 215, 0, 0.2);
+      z-index: 150;
+      padding: 80px 24px 32px;
+      flex-direction: column;
+      gap: 16px;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .mobile-nav-drawer.open {
+      display: flex;
+      transform: translateX(0);
+    }
+
+    .mobile-nav-drawer .nav-link,
+    .mobile-nav-drawer button.nav-link {
+      width: 100%;
+      text-align: center;
+      font-size: 0.7rem;
+      padding: 10px 14px;
+    }
+
+    .nav-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 140;
+    }
+
+    .nav-overlay.open {
+      display: block;
+    }
+
     /* ─── Mobile ──────────────────────────────────────────────── */
     @media (max-width: 768px) {
       header {
@@ -778,7 +856,15 @@
         font-size: clamp(12px, 4.5vw, 20px);
         letter-spacing: 1px;
         white-space: normal;
-        text-align: center;
+        text-align: left;
+      }
+
+      .header-nav {
+        display: none;
+      }
+
+      .hamburger-btn {
+        display: flex;
       }
 
       .hero-banner {
@@ -872,7 +958,20 @@
     <a href="about.html" class="nav-link">ABOUT</a>
     <button class="nav-link" onclick="openModal()">+ Submit a Business or Correction</button>
   </nav>
+  <!-- Hamburger (mobile only) -->
+  <button class="hamburger-btn" id="hamburger-btn" aria-label="Open navigation menu" onclick="toggleMobileNav()">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
 </header>
+
+<!-- ─── Mobile Nav Drawer ────────────────────────────────────── -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeMobileNav()"></div>
+<nav class="mobile-nav-drawer" id="mobile-nav-drawer">
+  <a href="about.html" class="nav-link" onclick="closeMobileNav()">ABOUT</a>
+  <button class="nav-link" onclick="closeMobileNav(); openModal();">+ Submit a Business or Correction</button>
+</nav>
 
 <!-- ─── Hero ───────────────────────────────────────────────── -->
 <section class="hero-banner">
@@ -1487,6 +1586,29 @@
 
     btn.textContent = "SUBMIT CORRECTION";
     btn.disabled = false;
+  }
+
+  // ─── MOBILE NAV ─────────────────────────────────────────────
+  function toggleMobileNav() {
+    const btn     = document.getElementById("hamburger-btn");
+    const drawer  = document.getElementById("mobile-nav-drawer");
+    const overlay = document.getElementById("nav-overlay");
+    const isOpen  = drawer.classList.contains("open");
+    if (isOpen) {
+      closeMobileNav();
+    } else {
+      btn.classList.add("open");
+      drawer.classList.add("open");
+      overlay.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+  }
+
+  function closeMobileNav() {
+    document.getElementById("hamburger-btn").classList.remove("open");
+    document.getElementById("mobile-nav-drawer").classList.remove("open");
+    document.getElementById("nav-overlay").classList.remove("open");
+    document.body.style.overflow = "";
   }
 
   // ─── INIT ────────────────────────────────────────────────────
