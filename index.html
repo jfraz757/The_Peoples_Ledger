@@ -1700,7 +1700,7 @@
     btn.disabled = true;
 
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
         method: "POST",
         headers: {
           apikey: SUPABASE_KEY,
@@ -1724,6 +1724,8 @@
           status:            "pending"
         })
       });
+
+      if (!res.ok) throw new Error("Server returned " + res.status);
 
       document.getElementById("tab-new").style.display = "none";
       document.getElementById("form-success").classList.add("visible");
@@ -1773,7 +1775,7 @@
     btn.disabled = true;
 
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
         method: "POST",
         headers: {
           apikey: SUPABASE_KEY,
@@ -1798,6 +1800,8 @@
           status:             "pending"
         })
       });
+
+      if (!res.ok) throw new Error("Server returned " + res.status);
 
       document.getElementById("tab-update").style.display = "none";
       document.getElementById("form-success").classList.add("visible");
