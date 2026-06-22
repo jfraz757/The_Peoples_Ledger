@@ -666,6 +666,49 @@
       margin-bottom: 14px;
     }
 
+    /* ─── Business Name Autocomplete ─────────────────────── */
+    .ac-wrap { position: relative; }
+
+    .ac-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 2px);
+      left: 0; right: 0;
+      background: #2a2a2a;
+      border: 1px solid rgba(255,215,0,0.3);
+      border-top: none;
+      z-index: 200;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .ac-dropdown.visible { display: block; }
+
+    .ac-item {
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.75);
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,215,0,0.08);
+      transition: background 0.15s;
+    }
+
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.highlighted { background: rgba(255,215,0,0.1); color: #FFD700; }
+
+    .ac-item-name { font-size: 0.85rem; }
+    .ac-item-sub  { font-size: 0.72rem; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+    .ac-exists-warning {
+      display: none;
+      font-size: 0.75rem;
+      color: #f5a623;
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .ac-exists-warning.visible { display: block; }
+
     .btn-submit {
       width: 100%;
       background: transparent;
@@ -1095,7 +1138,11 @@
       <div class="form-section-label">Business Information</div>
       <div class="form-group">
         <label>Business Name *</label>
-        <input type="text" id="new-name" placeholder="Full legal business name" />
+        <div class="ac-wrap">
+          <input type="text" id="new-name" placeholder="Full legal business name" autocomplete="off" />
+          <div class="ac-dropdown" id="new-name-dropdown"></div>
+        </div>
+        <div class="ac-exists-warning" id="new-name-warning">⚠ This business may already be in the directory. Consider using the &ldquo;Correct Existing Listing&rdquo; tab instead.</div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -1116,6 +1163,35 @@
         <textarea id="new-services" placeholder="Describe what this business offers..."></textarea>
       </div>
       <div class="form-group">
+        <label>Industry</label>
+        <select id="new-industry">
+          <option value="">Select an industry...</option>
+          <option value="Accounting and Finance">Accounting and Finance</option>
+          <option value="Architecture and Engineering">Architecture and Engineering</option>
+          <option value="Arts and Entertainment">Arts and Entertainment</option>
+          <option value="Business Consulting">Business Consulting</option>
+          <option value="Construction and Remodeling">Construction and Remodeling</option>
+          <option value="Education and Training">Education and Training</option>
+          <option value="Food and Beverage">Food and Beverage</option>
+          <option value="Government and Public Services">Government and Public Services</option>
+          <option value="Health and Wellness">Health and Wellness</option>
+          <option value="Human Resources and DEI">Human Resources and DEI</option>
+          <option value="Information Technology">Information Technology</option>
+          <option value="Insurance and Risk Management">Insurance and Risk Management</option>
+          <option value="Legal Services">Legal Services</option>
+          <option value="Logistics and Transportation">Logistics and Transportation</option>
+          <option value="Manufacturing and Industrial">Manufacturing and Industrial</option>
+          <option value="Marketing and Communications">Marketing and Communications</option>
+          <option value="Media and Publishing">Media and Publishing</option>
+          <option value="Non-Profit and Social Services">Non-Profit and Social Services</option>
+          <option value="Real Estate and Property Management">Real Estate and Property Management</option>
+          <option value="Retail and E-Commerce">Retail and E-Commerce</option>
+          <option value="Staffing and Recruiting">Staffing and Recruiting</option>
+          <option value="Travel and Hospitality">Travel and Hospitality</option>
+          <option value="Other Professional Services">Other Professional Services</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Ownership Type (select all that apply)</label>
         <div class="checkbox-group">
           <label class="checkbox-label"><input type="checkbox" value="Black-Owned" /> Black-Owned</label>
@@ -1127,6 +1203,22 @@
           <label class="checkbox-label"><input type="checkbox" value="Veteran-Owned" /> Veteran-Owned</label>
           <label class="checkbox-label"><input type="checkbox" value="Disability-Owned" /> Disability-Owned</label>
           <label class="checkbox-label"><input type="checkbox" value="Muslim-Owned" /> Muslim-Owned</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>State Certification Type (select all that apply)</label>
+        <div class="checkbox-group">
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="DBE" /> DBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="MBE" /> MBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="WBE" /> WBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="MWBE" /> MWBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="SBE" /> SBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="ACDBE" /> ACDBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="VBE" /> VBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="SDVBE" /> SDVBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="LGBTBE" /> LGBTBE</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="Not Certified" /> Not Certified</label>
+          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="Unknown" /> Unknown</label>
         </div>
       </div>
       <div class="form-group">
@@ -1156,7 +1248,10 @@
       <div class="form-section-label">Which Business Needs a Correction?</div>
       <div class="form-group">
         <label>Business Name *</label>
-        <input type="text" id="update-name" placeholder="Name of the business to correct" />
+        <div class="ac-wrap">
+          <input type="text" id="update-name" placeholder="Start typing to find the business..." autocomplete="off" />
+          <div class="ac-dropdown" id="update-name-dropdown"></div>
+        </div>
       </div>
       <div class="form-group">
         <label>What Needs to be Corrected? *</label>
@@ -1499,8 +1594,11 @@
       return;
     }
 
-    const checked = [...document.querySelectorAll("#tab-new .checkbox-group input:checked")];
-    const minorityType = checked.map(c => c.value).join(", ");
+    const ownershipChecked = [...document.querySelectorAll("#tab-new .checkbox-group input[type=checkbox]:not([name='new-cert']):checked")];
+    const minorityType = ownershipChecked.map(c => c.value).join(", ");
+
+    const certChecked = [...document.querySelectorAll("input[name='new-cert']:checked")];
+    const certType = certChecked.map(c => c.value).join(", ");
 
     const btn = event.target;
     btn.textContent = "Submitting...";
@@ -1523,6 +1621,8 @@
           website:           document.getElementById("new-website").value.trim() || null,
           services_products: document.getElementById("new-services").value.trim() || null,
           minority_type:     minorityType || null,
+          industry:          document.getElementById("new-industry").value || null,
+          certification_type: certType || null,
           kentucky_based:    document.getElementById("new-ky").value || null,
           submitter_name:    sName,
           submitter_email:   sEmail,
@@ -1588,6 +1688,127 @@
     btn.disabled = false;
   }
 
+  // ─── BUSINESS NAME AUTOCOMPLETE ─────────────────────────────
+  let allBusinessNames = [];
+  let newAcHighlight   = -1;
+  let updAcHighlight   = -1;
+
+  async function loadBusinessNames() {
+    try {
+      const res  = await fetch(`${SUPABASE_URL}/rest/v1/businesses?select=business_name,address&order=business_name.asc&limit=2000`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      });
+      allBusinessNames = await res.json();
+    } catch(e) {}
+  }
+
+  function acMatches(query) {
+    const q = query.toLowerCase();
+    return allBusinessNames.filter(b => b.business_name.toLowerCase().includes(q)).slice(0, 8);
+  }
+
+  function buildAcDropdown(matches, query, dropdownId, onSelect) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!matches.length || !query) { dropdown.classList.remove("visible"); return; }
+    const q = query.toLowerCase();
+    dropdown.innerHTML = matches.map(b => {
+      const idx  = b.business_name.toLowerCase().indexOf(q);
+      const name = idx === -1 ? b.business_name
+        : b.business_name.slice(0, idx)
+          + `<strong style="color:#FFD700;">${b.business_name.slice(idx, idx + query.length)}</strong>`
+          + b.business_name.slice(idx + query.length);
+      const sub  = b.address ? `<div class="ac-item-sub">${b.address}</div>` : "";
+      const safeName = b.business_name.replace(/\/g, "\\").replace(/'/g, "\'");
+      return `<div class="ac-item" data-name="${b.business_name}" onclick="${onSelect}('${safeName}')">
+        <div class="ac-item-name">${name}</div>${sub}
+      </div>`;
+    }).join("");
+    dropdown.classList.add("visible");
+  }
+
+  // ── "Add New Business" autocomplete ──
+  function selectNewBusiness(name) {
+    document.getElementById("new-name").value = name;
+    document.getElementById("new-name-dropdown").classList.remove("visible");
+    document.getElementById("new-name-warning").classList.add("visible");
+    newAcHighlight = -1;
+  }
+
+  document.getElementById("new-name").addEventListener("input", function() {
+    const q = this.value.trim();
+    const warning = document.getElementById("new-name-warning");
+    warning.classList.remove("visible");
+    if (!q) { document.getElementById("new-name-dropdown").classList.remove("visible"); return; }
+    const matches = acMatches(q);
+    buildAcDropdown(matches, q, "new-name-dropdown", "selectNewBusiness");
+  });
+
+  document.getElementById("new-name").addEventListener("keydown", function(e) {
+    const dropdown = document.getElementById("new-name-dropdown");
+    const items    = dropdown.querySelectorAll(".ac-item");
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      newAcHighlight = Math.min(newAcHighlight + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle("highlighted", i === newAcHighlight));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      newAcHighlight = Math.max(newAcHighlight - 1, 0);
+      items.forEach((el, i) => el.classList.toggle("highlighted", i === newAcHighlight));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (newAcHighlight >= 0 && items[newAcHighlight]) {
+        selectNewBusiness(items[newAcHighlight].dataset.name);
+      }
+      dropdown.classList.remove("visible");
+    } else if (e.key === "Escape") {
+      dropdown.classList.remove("visible");
+    }
+  });
+
+  // ── "Correct Existing Listing" autocomplete ──
+  function selectUpdateBusiness(name) {
+    document.getElementById("update-name").value = name;
+    document.getElementById("update-name-dropdown").classList.remove("visible");
+    updAcHighlight = -1;
+  }
+
+  document.getElementById("update-name").addEventListener("input", function() {
+    const q = this.value.trim();
+    if (!q) { document.getElementById("update-name-dropdown").classList.remove("visible"); return; }
+    const matches = acMatches(q);
+    buildAcDropdown(matches, q, "update-name-dropdown", "selectUpdateBusiness");
+  });
+
+  document.getElementById("update-name").addEventListener("keydown", function(e) {
+    const dropdown = document.getElementById("update-name-dropdown");
+    const items    = dropdown.querySelectorAll(".ac-item");
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      updAcHighlight = Math.min(updAcHighlight + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle("highlighted", i === updAcHighlight));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      updAcHighlight = Math.max(updAcHighlight - 1, 0);
+      items.forEach((el, i) => el.classList.toggle("highlighted", i === updAcHighlight));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (updAcHighlight >= 0 && items[updAcHighlight]) {
+        selectUpdateBusiness(items[updAcHighlight].dataset.name);
+      }
+      dropdown.classList.remove("visible");
+    } else if (e.key === "Escape") {
+      dropdown.classList.remove("visible");
+    }
+  });
+
+  // Close dropdowns on outside click
+  document.addEventListener("click", function(e) {
+    if (!e.target.closest(".ac-wrap")) {
+      document.getElementById("new-name-dropdown").classList.remove("visible");
+      document.getElementById("update-name-dropdown").classList.remove("visible");
+    }
+  });
+
   // ─── MOBILE NAV ─────────────────────────────────────────────
   function toggleMobileNav() {
     const btn     = document.getElementById("hamburger-btn");
@@ -1623,6 +1844,7 @@
     } catch(e) {}
 
     render();
+    loadBusinessNames();
   })();
 </script>
 </body>
