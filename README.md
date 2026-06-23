@@ -1,5 +1,5 @@
 # The People's Ledger
-### Kentucky Minority Business Directory
+### Kentucky Underrepresented Business Directory
 **Live at [thepeoplesledger.net](https://thepeoplesledger.net)**
 ### Open-source data infrastructure by Joe Frazier / Education to Action LLC
 
@@ -9,9 +9,9 @@
 
 From 2021 to 2023, I served as Founding Executive Director of the Kentucky Chamber Foundation's Center for Diversity, Equity, and Inclusion. In that role, I built Kentucky's first statewide minority-owned business database -- MBDKY.com -- in partnership with the Kentucky Finance and Revenue Cabinet, the Kentucky Transportation Cabinet, the Louisville Human Relations Commission, and Interapt, a minority-owned tech firm. I coined the phrase "Minority Owned, Kentucky Grown." The platform aggregated certified MBE data from across the Commonwealth into a single searchable directory, the first of its kind.
 
-That infrastructure no longer exists. MBDKY.com is offline. The state agencies that once published minority business certification data with ownership type included have removed that field from public-facing records -- a casualty of a racist political movement that chose erasure over equity.
+Supplier diversity programs were built for procurement. To get certified, to get listed, to get found in a government database, a business had to already be inside the system -- chasing contracts, navigating paperwork, meeting thresholds most small businesses never hear about. The programs weren't wrong. But they were never designed to talk to everyday people. They were designed to talk to purchasing officers. Most underrepresented businesses in Kentucky were invisible in those systems before the anti-DEI movement started dismantling them. They remain invisible now.
 
-The data didn't disappear. We rebuilt it.
+The People's Ledger was built for everyone else.
 
 I'm an Applied Sociologist and DEI Strategist, not a software engineer. This codebase was built through a collaborative, iterative process between me and two AI systems -- Claude (Anthropic) and Gemini (Google) -- bouncing drafts back and forth, pressure-testing logic, catching bugs, and refining the pipeline until it worked. That process is documented here because it matters: this is what community-centered, mission-first technology development looks like when the person driving it leads with purpose and uses every available tool to get there.
 
@@ -21,9 +21,9 @@ If the work is too political, it is because it is too honest.
 
 ## What This Is
 
-A full-stack minority business directory for the Commonwealth of Kentucky -- a live, searchable, public-facing database of minority-owned businesses built on open-source tooling and community data. It is designed to operate independently of state government data sources, which are no longer reliable for this purpose.
+A full-stack directory of underrepresented businesses in Kentucky -- a live, searchable, public-facing database built on open-source tooling and community data. It is designed to operate independently of government certification systems, which were never built to serve everyday consumers in the first place.
 
-The directory currently contains **1,191 verified, deduplicated business records** spanning 23 industry categories and 10 minority ownership types. It is live, searchable, and exportable by anyone.
+The directory currently contains **1,191 verified, deduplicated business records** spanning 23 industry categories and 10 ownership types. It is live, searchable, and exportable by anyone.
 
 ---
 
@@ -300,11 +300,15 @@ The Supabase publishable key is intentionally hardcoded in `index.html` -- this 
 
 ## Why This Matters
 
-The removal of minority type data from Kentucky's state agency databases didn't happen by accident. It is part of a coordinated national rollback of DEI infrastructure that has made it harder for minority-owned businesses to be found, for corporations to diversify their supply chains, and for community organizations to connect resources to the people who need them most.
+Corporations spend billions influencing the politics that shape your community -- funding candidates, backing litigation, lobbying against the programs designed to create equity in the marketplace. Your spending is just as political, whether you think of it that way or not. Every dollar you spend is a vote for what kind of economy you want to live in. The only question is whether you cast it deliberately.
 
-I built MBDKY.com because the data didn't exist in one place. I'm rebuilding it now because the data has been actively removed. The through-line is the same conviction I've carried from Charlottesville to Louisville: the infrastructure for equity shouldn't depend on political will at the state level to survive. When institutions pull back, the community builds forward.
+Supplier diversity programs were built for procurement, not people. The businesses that didn't qualify, didn't apply, or simply weren't trying to do business with the state were invisible in those systems. This directory exists to make them visible -- to consumers, neighbors, and communities looking to put their dollars where their values are.
 
-This tool is open-sourced intentionally -- so other states, other organizers, and other DEI practitioners can adapt it for their own contexts. The code is the easy part to replicate. The harder thing to replicate is knowing why it needs to exist in the first place.
+I built MBDKY.com because the data didn't exist in one place. I built The People's Ledger because the audience that needed it most was never the target of what came before. The through-line is the same conviction I've carried from Charlottesville to Louisville: the infrastructure for equity shouldn't depend on political will at the state level to survive. When institutions pull back, the community builds forward.
+
+This tool is open-sourced intentionally -- so other states, other organizers, and other practitioners can adapt it for their own contexts. The code is the easy part to replicate. The harder thing to replicate is knowing why it needs to exist in the first place.
+
+Money talks. Spend where it counts.
 
 The most important step is always the next one.
 
