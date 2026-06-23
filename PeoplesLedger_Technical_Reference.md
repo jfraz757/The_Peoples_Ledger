@@ -6,7 +6,7 @@
 
 ## 1. Project Overview
 
-The People's Ledger is a free, public, searchable directory of minority-owned businesses in Kentucky. It was built in response to state agencies removing minority ownership type data from public-facing databases following anti-DEI litigation. The directory currently contains 1,191 verified, deduplicated records.
+The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address. The directory currently contains 1,191 verified, deduplicated records.
 
 **Live URL:** thepeoplesledger.net
 **GitHub Repo:** github.com/jfraz757/The_Peoples_Ledger
