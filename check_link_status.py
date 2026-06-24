@@ -59,12 +59,23 @@ def main():
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     print("Fetching all records with websites...")
-    response = supabase.table("businesses")\
-        .select("id, business_name, website, status")\
-        .not_.is_("website", "null")\
-        .execute()
+    records = []
+    page_size = 1000
+    offset = 0
 
-    records = [r for r in response.data if r.get("website", "").strip()]
+    while True:
+        response = supabase.table("businesses")\
+            .select("id, business_name, website, status")\
+            .not_.is_("website", "null")\
+            .range(offset, offset + page_size - 1)\
+            .execute()
+
+        batch = [r for r in response.data if r.get("website", "").strip()]
+        records.extend(batch)
+
+        if len(response.data) < page_size:
+            break  # last page
+        offset += page_size
     print(f"Records to check: {len(records)}")
     print()
 
