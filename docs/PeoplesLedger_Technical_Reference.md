@@ -6,7 +6,7 @@
 
 ## 1. Project Overview
 
-The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address. The directory currently contains 1,191 verified, deduplicated records.
+The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address. The directory currently contains roughly 1,264 verified, deduplicated records.
 
 **Live URL:** thepeoplesledger.net
 **GitHub Repo:** github.com/jfraz757/The_Peoples_Ledger
@@ -40,31 +40,39 @@ SUPABASE_KEY = "sb_publishable_A0zmuZVHVPtosZrNdFE4GQ_sITuTrkg"
 
 ```
 The_Peoples_Ledger/
-├── index.html                      # Main directory page — all user-facing features
-├── about.html                      # About page with origin story and live business count
-├── CNAME                           # thepeoplesledger.net
-├── README.md                       # Comprehensive project documentation (committed)
-├── env.example                     # Template for .env keys
-├── .gitignore                      # Excludes .env, admin.html, CSV files
+├── index.html                  # Main directory page (served by GitHub Pages)
+├── about.html                  # About page with live business count
+├── admin.html                  # Local-only moderation tool (gitignored)
+├── CNAME                       # thepeoplesledger.net
+├── README.md                   # Project overview + runbook (committed)
+├── .gitignore                  # Excludes .env, admin.html, data/
+├── generate-business-pages.js  # Builds the static /businesses/ SEO pages
+├── businesses/                 # Generated per-business pages + sitemap (committed)
 │
-├── ky_minority_business_scraper.py # Core data collection engine
-├── clean_ky_businesses.py          # Duplicate merger and data cleaner
-├── upload_to_supabase.py           # CSV → Supabase bulk loader
-├── categorize_industries.py        # Claude API industry classifier
-├── fill_missing_services.py        # Claude API services gap filler
-├── check_link_status.py            # Monthly website URL status checker
-├── fix_buyblack_urls.py            # Replaces buyblack.org placeholder URLs
-├── view_database.py                # Opens CSV in D-Tale for local exploration
-├── data_gather_.ipynb              # Jupyter notebook for data exploration and prep
+├── pipeline/                   # All maintenance scripts (run manually, not deployed)
+│   ├── scrape.py               # Web discovery: Google Maps, listicles, social
+│   ├── prepare.py              # Filter + dedupe a scrape into one dispositioned file
+│   ├── upload_to_supabase.py   # Insert approved rows into the businesses table
+│   ├── enrich.py               # Post-upload: fill industry + services via Claude
+│   ├── maintain.py             # Link-status check (monthly) + buyblack fix (as needed)
+│   ├── reconcile_certifications.py  # Lane 2: certification spreadsheets (to build)
+│   └── view_database.py        # Open a data/ CSV in D-Tale
 │
-├── ky_minority_businesses.csv      # Raw collected data (gitignored)
-├── ky_minority_businesses_cleaned.csv  # Cleaned deduplicated data (gitignored)
-└── checkpoint_ky_minority_businesses.csv  # Scraper progress checkpoint (gitignored)
+├── data/                       # All working files (gitignored, never committed)
+│   ├── businesses_scraped.csv          # Raw scraper output
+│   ├── businesses_scraped_sources.csv  # Per-row source audit
+│   ├── businesses_scraped_checkpoint.csv
+│   ├── scraper_progress.json
+│   ├── businesses_prepared.csv         # prepare.py output (the file you review)
+│   └── cache/                          # Cached HTML, Maps responses, extractions
+│
+└── docs/
+    └── PeoplesLedger_Technical_Reference.md   # This file
 ```
 
-**admin.html is NOT in the repo.** Gitignored, runs locally only, never deployed. Contains hardcoded admin password.
+**admin.html is gitignored** — runs locally only, holds the admin password and the service-role key, never deployed.
 
-**CSV files are gitignored** — they are working files, not deployment artifacts.
+**The entire `data/` folder is gitignored.** The live site reads from Supabase, so no working file belongs in the repo. Scripts derive `data/` from their own location, so there are no hardcoded absolute paths anywhere in committed code.
 
 ---
 
@@ -170,16 +178,24 @@ Admin reads /rest/v1/submissions (all statuses, ordered by submitted_at desc)
 
 **Update submissions now auto-apply to the `businesses` table (updated June 2026).** When you approve an update submission in admin.html, the admin looks up the business by exact name and PATCHes only the fields that were submitted. Blank fields are ignored. If no exact name match is found, the admin alerts you to apply the correction manually. Any free-text additional notes are shown in the approval alert for your review but do not auto-apply.
 
-### Data pipeline flow (scraper → live)
+### Data pipeline flow
+
+Two intake lanes feed the one `businesses` table. They use different tools on purpose and must not be mixed.
+
+**Lane 1 — Web discovery (quarterly).** Run from the repo root:
 ```
-ky_minority_business_scraper.py   → ky_minority_businesses.csv (raw)
-clean_ky_businesses.py            → ky_minority_businesses_cleaned.csv
-upload_to_supabase.py             → businesses table (Supabase)
-categorize_industries.py          → fills industry column via Claude API
-fill_missing_services.py          → fills services_products via Claude API
-check_link_status.py              → updates status column (monthly)
-fix_buyblack_urls.py              → fixes placeholder URLs (as needed)
+pipeline/scrape.py    → data/businesses_scraped.csv (raw web discovery)
+pipeline/prepare.py   → data/businesses_prepared.csv
+                        (filtered, deduped, one Disposition column:
+                         Good to go / Needs review / Dropped)
+   [review the "Needs review" rows; flip keepers to "Good to go"]
+pipeline/upload_to_supabase.py → inserts ONLY "Good to go" rows into businesses
+pipeline/enrich.py    → fills industry, then services_products, via Claude
+pipeline/maintain.py  → sets status (Active / Inactive / No Website)
+generate-business-pages.js → regenerates the static /businesses/ pages
 ```
+
+**Lane 2 — Certification spreadsheets (as agencies refresh).** The Louisville HRC, KY Transportation, and KY Finance certification lists are CAPTCHA-protected manual downloads and the only source of `certification_type`. They must NOT go through prepare.py, which strips chains and out-of-state records that are legitimate on an authoritative list. Reconcile them against the live table with fuzzy matching, fill certification_type on matches, and insert genuine new businesses. (`reconcile_certifications.py` is not built yet.)
 
 ---
 
@@ -250,21 +266,23 @@ The search is powered by two PostgreSQL RPC functions, not direct table queries.
 
 ## 10. Python Scripts Reference
 
-All scripts use `.env` for credentials. Run from the project root. Python path: `C:/Users/jfraz/AppData/Local/Python/pythoncore-3.14-64/python.exe`
+All scripts load `.env` from the repo root and derive `data/` from their own location, so run them from the repo root. No hardcoded absolute paths. Python: `C:/Users/jfraz/AppData/Local/Python/pythoncore-3.14-64/python.exe`
 
-| Script | Purpose | Frequency | API Cost |
+| Script | Purpose | Frequency | API cost |
 |---|---|---|---|
-| `ky_minority_business_scraper.py` | Scrapes new businesses from web | Quarterly | ~$9/1000 records (Anthropic) + SerpApi |
-| `clean_ky_businesses.py` | Deduplicates and merges CSV records | After each scraper run | Free |
-| `upload_to_supabase.py` | Loads cleaned CSV to Supabase in batches of 100 | After cleaning | Free |
-| `categorize_industries.py` | Assigns industry category via Claude API | After upload | ~$0.75-1.00/1000 records |
-| `fill_missing_services.py` | Generates service descriptions via Claude API | After upload | Low |
-| `check_link_status.py` | Re-checks all website URLs, updates status field | Monthly | Free |
-| `fix_buyblack_urls.py` | Replaces buyblack.org placeholder URLs with real ones | As needed | SerpApi |
-| `view_database.py` | Opens CSV in D-Tale browser explorer | As needed | Free |
-| `data_gather_.ipynb` | Jupyter notebook for data prep and exploration | As needed | Free |
+| `pipeline/scrape.py` | Web discovery (Maps, listicles, social) | Quarterly | SerpApi + Haiku (low) |
+| `pipeline/prepare.py` | Filter geography and chains, dedupe, write the dispositioned file | After each scrape | Free |
+| `pipeline/upload_to_supabase.py` | Insert "Good to go" rows in batches of 100 | After review | Free |
+| `pipeline/enrich.py` | Fill industry then services via Claude (`--industries` / `--services` to run one) | After upload | ~$0.75-1.00/1000 |
+| `pipeline/maintain.py` | Link-status check; `--buyblack` also resolves buyblack.org URLs | Monthly / as needed | Free / SerpApi |
+| `pipeline/reconcile_certifications.py` | Lane 2 certification merge (to build) | As agencies refresh | Free |
+| `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
 
-**Claude API model used in scripts:** `claude-sonnet-4-6`
+**Consolidation note:** `prepare.py` replaces the old `triage` + `clean_ky_businesses.py`; `enrich.py` replaces `categorize_industries.py` + `fill_missing_services.py`; `maintain.py` replaces `check_link_status.py` + `fix_buyblack_urls.py`.
+
+**Claude models:** `scrape.py` extracts with `claude-haiku-4-5`; `enrich.py` uses `claude-sonnet-4-6`.
+
+**Upload key:** `upload_to_supabase.py` needs a key with INSERT rights (service role), distinct from the read-only publishable key used by `scrape.py` and the live site.
 
 **Scraper data sources (all require manual download — CAPTCHA-protected):**
 - Kentucky Transportation Cabinet (B2GNow portal)
@@ -331,26 +349,26 @@ git push
 
 ## 13. Maintenance Schedule
 
-| Task | Script | Frequency |
+| Task | Command | Frequency |
 |---|---|---|
-| Add new businesses | `ky_minority_business_scraper.py` | Quarterly |
-| Clean and deduplicate | `clean_ky_businesses.py` | After each scraper run |
-| Upload to Supabase | `upload_to_supabase.py` | After cleaning |
-| Categorize new records | `categorize_industries.py` | After upload |
-| Fill missing services | `fill_missing_services.py` | After upload |
-| Regenerate SEO pages | `generate-business-pages.js` | After upload (quarterly) |
-| Refresh link statuses | `check_link_status.py` | Monthly |
-| Fix directory placeholders | `fix_buyblack_urls.py` | As needed |
+| Add new businesses | `python pipeline/scrape.py` | Quarterly |
+| Prepare (filter + dedupe) | `python pipeline/prepare.py` | After each scrape |
+| Upload approved rows | `python pipeline/upload_to_supabase.py` | After review |
+| Enrich (industry + services) | `python pipeline/enrich.py` | After upload |
+| Regenerate SEO pages | `node generate-business-pages.js` | After upload (quarterly) |
+| Refresh link statuses | `python pipeline/maintain.py` | Monthly |
+| Fix buyblack URLs | `python pipeline/maintain.py --buyblack` | As needed |
+| Reconcile certification lists | `python pipeline/reconcile_certifications.py` (to build) | As agencies refresh |
 
 ---
 
 ## 14. Known Limitations
 
 - `minority_type` and `certification_type` are comma-separated strings, not normalized. Future refactor would use junction tables.
-- Minority type detection in the scraper depends on ownership language appearing in page text — badges and images are not read.
-- Several national directories (NMSDC, WBENC, NGLCC) use JavaScript rendering and can't be scraped with standard HTTP requests. Selenium/Playwright would be needed.
+- Ownership detection in `scrape.py` works by source: Google Maps results are kept only when Google's own self-identified ownership attribute is present and are tagged from that attribute; organic and social results are tagged from ownership language in the page text. Badges and images are not read. This is the fix for the early bug where chains and same-name businesses were mislabeled from the search query.
+- The national certification directories (NMSDC, WBENC, NGLCC) are membership-gated paid databases aimed at B2B procurement, not a consumer directory, and scraping them is ToS-risky. Selenium was evaluated and deliberately not added. Free JS-rendered directories are instead handled by finding their JSON endpoint and adding it to `DIRECTORY_API_ENDPOINTS`.
 - This is not a substitute for certified MBE data for procurement compliance.
-- The KY Transportation Cabinet and KY Finance & Administration Cabinet no longer include minority type fields in exports. The Louisville HRC database still does — it includes both `Ethnicity` and `Certification Type` columns and should be downloaded and merged on each quarterly data refresh.
+- The KY Transportation Cabinet and KY Finance & Administration Cabinet no longer include minority type fields in exports. The Louisville HRC database still does — it includes both `Ethnicity` and `Certification Type` columns and should be downloaded and merged on each quarterly data refresh (lane 2).
 
 ---
 
@@ -387,7 +405,7 @@ This document is only useful if it reflects what actually happened. After any se
 
 **Commit it like any other file:**
 ```bash
-git add PeoplesLedger_Technical_Reference.md
+git add docs/PeoplesLedger_Technical_Reference.md
 git commit -m "Update technical reference"
 git push
 ```
@@ -412,13 +430,13 @@ The version on GitHub is the source of truth. If your local copy and the repo di
 
 ---
 
-## 19. v2 Scraper (ky_minority_business_scraper_v2.py)
+## 19. The Scraper (pipeline/scrape.py)
 
-A second scraper built to run alongside the original `ky_minority_business_scraper.py`, not replace it. It writes to v2-named output files so its results can be compared against the v1 output before anything enters the pipeline. The CSV schema is identical to v1, so `clean_ky_businesses.py`, `upload_to_supabase.py`, and the rest of the pipeline accept the v2 output unchanged once you choose to use it.
+The web-discovery engine for lane 1. It writes to `data/`, and its output is consumed by `pipeline/prepare.py` (which merges the old triage and clean steps). The CSV is a 6-column schema; `prepare.py` adds the Status, Kentucky Based, and Disposition columns downstream.
 
-### What it changes from v1
+### What it does
 
-- Adds a SerpApi Google Maps phase that pulls structured business name, address, phone, and website with no page fetch and no Claude call. Ownership type is inferred from the search query that found the result.
+- Runs a SerpApi Google Maps phase that pulls structured business name, address, phone, and website with no page fetch and no Claude call. Ownership type comes from Google's self-identified ownership attribute on the result, never from the search query (see caveats).
 - Switches extraction from Sonnet to Haiku (`claude-haiku-4-5`). Same JSON extraction job, much lower cost per record.
 - Stops truncating long pages at 6000 characters. Pages that are long and carry multiple ownership signals are treated as roundups, chunked, and extracted in full.
 - Keeps internal directory profile links (for example `/directory/business/123`), not only outbound links. Deep-link discovery now reads the full page including nav, header, and footer, where About and Contact links usually live.
@@ -440,11 +458,11 @@ A full fresh statewide run is roughly 690 SerpApi searches (about 330 Maps, 330 
 
 ### Resume behavior
 
-`scraper_progress_v2.json` records exactly which Maps searches, directory harvests, organic searches, and URL scans have completed. If any phase fails, fix the problem and re-run. The script skips finished work, including already-paid SerpApi searches, and resumes where it stopped. Business rows are always written to the checkpoint CSV before a unit of work is marked done, so a crash never loses data it claimed to finish. To force a full fresh run, delete `scraper_progress_v2.json`.
+`data/scraper_progress.json` records exactly which Maps searches, directory harvests, organic searches, and URL scans have completed. If any phase fails, fix the problem and re-run. The script skips finished work, including already-paid SerpApi searches, and resumes where it stopped. Business rows are always written to the checkpoint CSV before a unit of work is marked done, so a crash never loses data it claimed to finish. To force a full fresh run, delete `data/scraper_progress.json`.
 
 ### Skipping businesses already in the directory
 
-With `SKIP_KNOWN_BUSINESSES` on (the default), the scraper reads the existing `businesses` table from Supabase at startup and uses it to avoid re-work. It skips scanning any URL whose domain is already a known business website, which saves both the page fetch and the Claude extraction for that page. It also drops exact name plus website matches from the output, so the v2 CSV is a clean list of new candidates rather than a re-run of what you already have. Social hosts are never blanket-skipped, only the exact known profile URL, so a new Instagram business on the same platform still gets scanned. Fuzzy near-duplicate matching is deliberately left to `clean_ky_businesses.py`, which already handles it with rapidfuzz, so the scraper never risks dropping a genuinely new business on a name coincidence.
+With `SKIP_KNOWN_BUSINESSES` on (the default), the scraper reads the existing `businesses` table from Supabase at startup and uses it to avoid re-work. It skips scanning any URL whose domain is already a known business website, which saves both the page fetch and the Claude extraction for that page. It also drops exact name plus website matches from the output, so the v2 CSV is a clean list of new candidates rather than a re-run of what you already have. Social hosts are never blanket-skipped, only the exact known profile URL, so a new Instagram business on the same platform still gets scanned. Fuzzy near-duplicate matching is deliberately left to `prepare.py`, which already handles it with rapidfuzz, so the scraper never risks dropping a genuinely new business on a name coincidence.
 
 This needs read access to Supabase. Add to `.env`:
 
@@ -459,11 +477,11 @@ The publishable key allows public reads under the existing RLS SELECT policy, so
 
 | File | Purpose |
 |---|---|
-| `ky_minority_businesses_v2.csv` | Main result, same 6-column schema as v1 |
-| `ky_minority_businesses_v2_sources.csv` | Audit-only log of where each row came from (google_maps, organic, social, directory_api). Does not enter the pipeline. |
-| `checkpoint_ky_minority_businesses_v2.csv` | Rolling save during the run |
-| `scraper_progress_v2.json` | Phase and step resume state |
-| `cache_v2/` | Cached HTML and extractions |
+| `data/businesses_scraped.csv` | Main result, 6-column schema, consumed by prepare.py |
+| `data/businesses_scraped_sources.csv` | Audit-only log of where each row came from (google_maps, organic, social, directory_api). Does not enter the pipeline. |
+| `data/businesses_scraped_checkpoint.csv` | Rolling save during the run |
+| `data/scraper_progress.json` | Phase and step resume state |
+| `data/cache/` | Cached HTML, Maps responses, and extractions |
 
 ### SerpApi limits and clean halting
 
@@ -471,6 +489,6 @@ SerpApi calls distinguish a real failure from a genuine empty result. A quota-ex
 
 ### Caveats to check before uploading
 
-- Maps results are kept only when Google's own self-identified ownership attribute is present in the result, and they are tagged from that attribute, not from the search query. This is the fix for the v2 first-run problem where chains and popular nearby businesses (QDOBA, Walmart, anything with "Black" in the name) were being mislabeled. Coverage depends on owners having set the attribute, so if a run keeps very few Maps businesses, attribute coverage is thin and you can set MAPS_VERIFY_LEADS_VIA_WEBSITE to True, which sends attribute-less Maps results with a website into the Phase 4 evidence check rather than trusting them. Raw Maps responses are cached under cache_v2/maps so re-runs and detection tweaks cost no SerpApi searches.
+- Maps results are kept only when Google's own self-identified ownership attribute is present in the result, and they are tagged from that attribute, not from the search query. This is the fix for the v2 first-run problem where chains and popular nearby businesses (QDOBA, Walmart, anything with "Black" in the name) were being mislabeled. Coverage depends on owners having set the attribute, so if a run keeps very few Maps businesses, attribute coverage is thin and you can set MAPS_VERIFY_LEADS_VIA_WEBSITE to True, which sends attribute-less Maps results with a website into the Phase 4 evidence check rather than trusting them. Raw Maps responses are cached under data/cache/maps so re-runs and detection tweaks cost no SerpApi searches.
 - The Google Maps response shape on SerpApi shifts occasionally. If `local_results` comes back empty, verify the engine parameters against current SerpApi docs.
 - Haiku is the extraction model. If ownership-type judgment proves unreliable on some sources, route only those to Sonnet.
