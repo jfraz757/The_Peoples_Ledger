@@ -1,10 +1,24 @@
-admin.html
-Minority_Biz_Database_Project/Old_KY_Biz_Spreadsheets/
+# Secrets
 .env
-# v2 scraper working files
-cache_v2/
-scraper_progress_v2.json
-ky_minority_businesses_v2.csv
-checkpoint_ky_minority_businesses_v2.csv
-ky_minority_businesses_v2_sources.csv
+
+# Local admin tool (contains the service-role key)
+admin.html
+
+# All working data: scraped CSVs, prepared file, caches, checkpoints, progress.
+# The live site reads from Supabase, so none of this belongs in the repo.
+data/
+
+# Old spreadsheet archive
+Minority_Biz_Database_Project/Old_KY_Biz_Spreadsheets/
+
+# Personal scratch / exploration
 First_looks.ipynb
+*.ipynb_checkpoints/
+
+# Leftover downloads
+gitignore.txt
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
