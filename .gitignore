@@ -1,3 +1,10 @@
 admin.html
 Minority_Biz_Database_Project/Old_KY_Biz_Spreadsheets/
 .env
+# v2 scraper working files
+cache_v2/
+scraper_progress_v2.json
+ky_minority_businesses_v2.csv
+checkpoint_ky_minority_businesses_v2.csv
+ky_minority_businesses_v2_sources.csv
+First_looks.ipynb
