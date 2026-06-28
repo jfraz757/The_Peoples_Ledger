@@ -6,7 +6,7 @@
 
 ## 1. Project Overview
 
-The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address. The directory currently contains roughly 1,264 verified, deduplicated records.
+The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address. The directory currently contains roughly 1,794 verified, deduplicated records.
 
 **Live URL:** thepeoplesledger.net
 **GitHub Repo:** github.com/jfraz757/The_Peoples_Ledger
@@ -54,6 +54,7 @@ The_Peoples_Ledger/
 │   ├── prepare.py              # Filter + dedupe a scrape into one dispositioned file
 │   ├── upload_to_supabase.py   # Insert approved rows into the businesses table
 │   ├── enrich.py               # Post-upload: fill industry + services via Claude
+│   ├── dedupe_live.py          # One-off/repeatable duplicate cleanup on the live table
 │   ├── maintain.py             # Link-status check (monthly) + buyblack fix (as needed)
 │   ├── reconcile_certifications.py  # Lane 2: certification spreadsheets (to build)
 │   └── view_database.py        # Open a data/ CSV in D-Tale
@@ -134,13 +135,21 @@ Called by `fetchRecords()` in index.html. Parameters:
 - `page_limit` — page size (default 24)
 - `page_offset` — pagination offset
 
-Returns records with a `total_count` field on each row for pagination. Uses `pg_trgm` for fuzzy matching.
+Returns records with a `total_count` field on each row for pagination.
+
+**Rebuilt June 2026.** The original used whole-string `similarity()`, which diluted short queries against long names so a single word like "chois" scored below threshold and returned nothing until more words were added. The current version:
+- Matches `search_text` across `business_name`, `services_products`, AND `industry`, not the name alone.
+- Primary match is a normalized substring (`ILIKE`) where both the query and the field are lowercased with all non-alphanumerics stripped, so punctuation no longer blocks matches. This is why "chois" now finds "Choi's Asian Food Market" (the apostrophe between the i and s previously broke the literal match).
+- Fuzzy fallback uses `word_similarity()` (term vs the best-matching segment of the field), not whole-string `similarity()`, so short fragments match inside long names.
+- Ranks exact substring hits first, then by fuzzy relevance, then alphabetically.
+
+The return column list is flat and must match the `businesses` schema; if a column is added/renamed/removed, update the `RETURNS TABLE` block.
 
 ### `suggest_search`
 Called when a search returns zero results. Parameter:
 - `search_text` — the failed query
 
-Returns suggested alternative terms based on trigram similarity to existing business names and services. Powers the "Did You Mean...?" feature.
+Returns the closest business names by `word_similarity` (rebuilt June 2026 to match the new search logic). Powers the "Did You Mean...?" feature.
 
 **Critical:** If the schema of `businesses` changes (column added/renamed/removed), these RPC functions may need to be updated in Supabase. They are not auto-updated by schema changes.
 
@@ -262,6 +271,8 @@ The search is powered by two PostgreSQL RPC functions, not direct table queries.
 
 4. **Ownership type filtering** uses partial string matching (`ilike '%value%'`) inside the RPC function because `minority_type` is a comma-separated string. A business tagged "Black-Owned, Women-Owned" should show up under either filter.
 
+5. **Punctuation is normalized in search (June 2026).** Both the query and the searched fields are lowercased with non-alphanumerics stripped before substring matching, so apostrophes, ampersands, and periods do not block hits. Category and free-text search are different things: putting a grocery in the Food and Beverage *category* makes the filter work, but the free-text word "groceries" only matches if the word appears in the name, services, or industry text. Keep `services_products` descriptions leading with the plain searchable business type for this reason.
+
 ---
 
 ## 10. Python Scripts Reference
@@ -273,7 +284,8 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 | `pipeline/scrape.py` | Web discovery (Maps, listicles, social) | Quarterly | SerpApi + Haiku (low) |
 | `pipeline/prepare.py` | Filter geography and chains, dedupe, write the dispositioned file | After each scrape | Free |
 | `pipeline/upload_to_supabase.py` | Insert "Good to go" rows in batches of 100 | After review | Free |
-| `pipeline/enrich.py` | Fill industry then services via Claude (`--industries` / `--services` to run one) | After upload | ~$0.75-1.00/1000 |
+| `pipeline/enrich.py` | Repair/fill industry then services via Claude. Now repairs existing bad data, not just nulls. Flags: `--industries` (fill null + fix off-list labels), `--services` (fill null + expand thin text), `--reclassify "Bucket,Bucket"` (re-evaluate a bucket, move only on change), `--reenrich-services "Bucket"` (rewrite a bucket's services regardless of length), `--reenrich-groceries` (per-row classifier over Food and Beverage; rewrites only grocery/market businesses so they are findable by "groceries"), `--dry-run`, `--limit N` | After upload | ~$0.75-1.00/1000 |
+| `pipeline/dedupe_live.py` | Merge duplicate rows in the live table. Groups by normalized name; survivor keeps the best address and the real business website (not a buyblack.org placeholder); same-name + same-phone rows merge even when addresses differ; genuine address conflicts go to a review CSV. `--selftest`, `--dry-run` (default), `--apply`. Needs the service-role key. | As needed | Free |
 | `pipeline/maintain.py` | Link-status check; `--buyblack` also resolves buyblack.org URLs | Monthly / as needed | Free / SerpApi |
 | `pipeline/reconcile_certifications.py` | Lane 2 certification merge (to build) | As agencies refresh | Free |
 | `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
@@ -330,7 +342,7 @@ node generate-business-pages.js
 - CTA linking back to `index.html?search=BusinessName` and to the full directory
 - Canonical URL and Open Graph meta tags for SEO
 
-**Sitemap:** `/businesses/sitemap.xml` lists every business page plus `index.html` and `about.html`. Submitted to Google Search Console June 24, 2026 — 1,266 pages discovered, Status: Success.
+**Sitemap:** `/businesses/sitemap.xml` lists every business page plus `index.html` and `about.html`. First submitted to Google Search Console June 24, 2026 (1,266 pages discovered, Status: Success). Regenerated June 2026 after dedupe and enrichment; the table and sitemap now hold 1,794 business pages.
 Submit sitemap at: `https://search.google.com/search-console`
 Sitemap URL: `https://thepeoplesledger.net/businesses/sitemap.xml`
 
@@ -355,6 +367,7 @@ git push
 | Prepare (filter + dedupe) | `python pipeline/prepare.py` | After each scrape |
 | Upload approved rows | `python pipeline/upload_to_supabase.py` | After review |
 | Enrich (industry + services) | `python pipeline/enrich.py` | After upload |
+| Dedupe the live table | `python pipeline/dedupe_live.py` (dry-run first, then `--apply`) | As needed |
 | Regenerate SEO pages | `node generate-business-pages.js` | After upload (quarterly) |
 | Refresh link statuses | `python pipeline/maintain.py` | Monthly |
 | Fix buyblack URLs | `python pipeline/maintain.py --buyblack` | As needed |
@@ -426,7 +439,7 @@ The version on GitHub is the source of truth. If your local copy and the repo di
 - [ ] Does the change affect the admin approval flow? Remember that update submissions require manual DB edits
 - [ ] Is admin.html being pushed to GitHub? (It should never be — it's gitignored)
 - [ ] Is `.env` being pushed to GitHub? (It should never be — it's gitignored)
-- [ ] Does a Python script need to be updated? Test with a small batch before running on the full 1,264 records
+- [ ] Does a Python script need to be updated? Test with a small batch before running on the full ~1,794 records
 
 ---
 
@@ -492,3 +505,22 @@ SerpApi calls distinguish a real failure from a genuine empty result. A quota-ex
 - Maps results are kept only when Google's own self-identified ownership attribute is present in the result, and they are tagged from that attribute, not from the search query. This is the fix for the v2 first-run problem where chains and popular nearby businesses (QDOBA, Walmart, anything with "Black" in the name) were being mislabeled. Coverage depends on owners having set the attribute, so if a run keeps very few Maps businesses, attribute coverage is thin and you can set MAPS_VERIFY_LEADS_VIA_WEBSITE to True, which sends attribute-less Maps results with a website into the Phase 4 evidence check rather than trusting them. Raw Maps responses are cached under data/cache/maps so re-runs and detection tweaks cost no SerpApi searches.
 - The Google Maps response shape on SerpApi shifts occasionally. If `local_results` comes back empty, verify the engine parameters against current SerpApi docs.
 - Haiku is the extraction model. If ownership-type judgment proves unreliable on some sources, route only those to Sonnet.
+---
+
+## 20. Change Log
+
+### June 2026 — Search rebuild, live dedupe, categorization cleanup
+
+Three issues were reported: short/punctuated searches returned nothing, the table had duplicates, and categories were inconsistent so groceries were unfindable. All three were resolved.
+
+**Search.** Rebuilt `search_businesses` and `suggest_search` (see Section 5). Root cause was whole-string `similarity()` diluting short queries plus literal substring matching that an apostrophe could break ("chois" vs "Choi's"). Fix normalizes punctuation on both sides, matches across name + services + industry, and uses `word_similarity()` for fuzzy fallback. These live in Supabase, not the HTML.
+
+**Duplicates.** Built `pipeline/dedupe_live.py`. The live table had ~76 exact-name duplicate clusters, largely from the two intake lanes (web scrape vs certification reconcile) inserting the same business with differently formatted names and addresses. Removed 77 rows; survivors keep the best address and the real business website over directory placeholders. Row count went from a post-merge 1,871 down to 1,794. (The 1,264 in older docs predated the last merge.)
+
+**Categorization.** The strays ("Construction", "Supplier", "Services", etc.) came from the certification/scrape lane, not enrich.py, whose prompt was already pinned to the 23 categories. Root problem: both enrich passes only touched NULL rows, so existing bad/thin/off-list values were never repaired. Fixed off-list labels with deterministic SQL renames, then reclassified the catch-all buckets (Retail and E-Commerce, Other Professional Services) — 127 of 328 rows moved, every grocery/market correctly landing in Food and Beverage. A handful of model misses were hand-corrected (Hopkinsville Black Market, MELANnaire Marketplace, El Papeleo). Then `--reenrich-groceries` rewrote grocery/market descriptions to lead with the searchable type, since fixing the category alone does not make the free-text word "groceries" match.
+
+**Known follow-ups (not blocking):**
+- Some certification-lane rows still carry raw NAICS-code text in `services_products` (e.g. First Choice Commercial Services). `--reenrich-services` pointed at those rows would clean them.
+- A few `.0` ZIP artifacts (e.g. "47111.0") came from a ZIP-read-as-float in prepare.py or upload; worth fixing at the source so new rows stop arriving that way.
+- `scrape.py` mismapped a column on at least one run (an ownership descriptor landed in an address field); watch for it.
+- A phone-based near-duplicate scan could catch dupes that exact-name grouping misses (different punctuation in the name).

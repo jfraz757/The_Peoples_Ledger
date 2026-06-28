@@ -17,6 +17,7 @@ Usage:
 """
 
 import os
+import math
 import pandas as pd
 from supabase import create_client
 from dotenv import load_dotenv
@@ -61,11 +62,6 @@ def main():
     # Keep only the eight database columns; drop Disposition/Reason/Source.
     df = df[[c for c in DB_RENAME if c in df.columns]].rename(columns=DB_RENAME)
 
-    # Blanks -> NULL so Supabase accepts them; industry, services_products, and
-    # certification_type are filled by the post-upload steps.
-    df = df.astype(object).where(pd.notna(df), None)
-    df = df.apply(lambda col: col.map(lambda v: None if str(v).strip() == "" else v))
-
     if df.empty:
         print("Nothing to upload. Did you mark any rows 'Good to go'?")
         return
@@ -73,7 +69,21 @@ def main():
     print("Connecting to Supabase...")
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-    records = df.to_dict(orient="records")
+    # Build records, then scrub every value so no NaN or empty string reaches the
+    # JSON body. NaN is not JSON-compliant and Supabase will reject the batch.
+    # industry, services_products, and certification_type are meant to be empty
+    # here; they are filled by the post-upload enrich step.
+    def clean(v):
+        if v is None:
+            return None
+        if isinstance(v, float) and math.isnan(v):
+            return None
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
+
+    records = [{k: clean(v) for k, v in r.items()}
+               for r in df.to_dict(orient="records")]
     total, uploaded = len(records), 0
     for i in range(0, total, BATCH_SIZE):
         batch = records[i:i + BATCH_SIZE]
