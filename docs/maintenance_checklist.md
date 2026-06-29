@@ -136,3 +136,19 @@ python pipeline/upload_to_supabase.py             # 6. uploads only "Good to go"
 - **If the `businesses` schema changes**, update the `search_businesses` and `suggest_search` RPC functions in Supabase. They are not auto-updated.
 - **After any data change, regenerate the static pages**: `node generate-business-pages.js`, then push.
 - **Always test locally** before pushing: `python -m http.server 8080` from the repo root, then open `http://localhost:8080/index.html`.
+
+---
+
+## Routine batch (the simple path)
+
+Use the runner instead of remembering the individual scripts:
+
+```bash
+python pipeline/ledger.py prep       # prepare + resolve_review, then stops for your review
+#   review data/businesses_prepared.csv (filter 'Needs review'); keep good, drop rest
+python pipeline/prepare.py --commit-drops   # remember your drops so they never return
+python pipeline/ledger.py publish    # upload + enrich (industries, then services)
+python pipeline/ledger.py maintain   # dry-run health checks of the live table
+```
+
+`prep` now does the heavy weeding for you: drops chains, out-of-state, already-live (skip-known), and denylisted rows; collapses near-duplicate names before you see them; and `resolve_review` settles the no-address rows by finding each business's real website (even when the listed link is a listicle) and reading the address. Full map in `docs/order_of_operations.md`.
