@@ -51,10 +51,13 @@ The_Peoples_Ledger/
 │
 ├── pipeline/                   # All maintenance scripts (run manually, not deployed)
 │   ├── scrape.py               # Web discovery: Google Maps, listicles, social
+│   ├── discover_categories.py  # Lane 1b: category-seeded discovery (carnicerias, asian markets, etc.)
 │   ├── prepare.py              # Filter + dedupe a scrape into one dispositioned file
 │   ├── upload_to_supabase.py   # Insert approved rows into the businesses table
 │   ├── enrich.py               # Post-upload: fill industry + services via Claude
 │   ├── dedupe_live.py          # One-off/repeatable duplicate cleanup on the live table
+│   ├── clean_addresses.py      # Strip "N/A" tokens from addresses (dry-run default, backs up)
+│   ├── purge_out_of_state.py   # Remove rows whose address resolves to a non-KY state
 │   ├── maintain.py             # Link-status check (monthly) + buyblack fix (as needed)
 │   ├── reconcile_certifications.py  # Lane 2: certification spreadsheets (to build)
 │   └── view_database.py        # Open a data/ CSV in D-Tale
@@ -64,6 +67,10 @@ The_Peoples_Ledger/
 │   ├── businesses_scraped_sources.csv  # Per-row source audit
 │   ├── businesses_scraped_checkpoint.csv
 │   ├── scraper_progress.json
+│   ├── businesses_scraped_categories.csv         # Lane 1b verified passes (read by prepare.py)
+│   ├── businesses_scraped_categories_sources.csv # Lane 1b source audit
+│   ├── category_review.csv                # Lane 1b manual-review queue (Tier C)
+│   ├── category_progress.json             # Lane 1b resume state
 │   ├── businesses_prepared.csv         # prepare.py output (the file you review)
 │   └── cache/                          # Cached HTML, Maps responses, extractions
 │
@@ -524,3 +531,27 @@ Three issues were reported: short/punctuated searches returned nothing, the tabl
 - A few `.0` ZIP artifacts (e.g. "47111.0") came from a ZIP-read-as-float in prepare.py or upload; worth fixing at the source so new rows stop arriving that way.
 - `scrape.py` mismapped a column on at least one run (an ownership descriptor landed in an address field); watch for it.
 - A phone-based near-duplicate scan could catch dupes that exact-name grouping misses (different punctuation in the name).
+
+### June 2026: Out-of-state purge and address cleanup
+
+Removed businesses whose address resolves to a US state other than Kentucky, and fixed the address noise that was hiding real Kentucky rows.
+
+**Address cleanup (`pipeline/clean_addresses.py`).** Many rows carried a real Kentucky address with a trailing "N/A" (e.g. "Louisville, KY, N/A"). The parser only inspected the segment after the last comma, saw "N/A", found no state, and routed the row to manual review. The script strips delimited "N/A" tokens, tidies the leftover commas and double spaces, and sets the address to NULL when a cell was nothing but "N/A". Dry-run by default; `--apply` writes, backing up every change to `data/`.
+
+**Out-of-state purge (`pipeline/purge_out_of_state.py`).** Deletes only rows whose address positively resolves to a non-KY state. Blank/NULL addresses are kept. Addresses present but undetermined are kept and written to a review CSV (never delete on uncertainty). State resolution runs in order: abbreviation-before-ZIP, trailing two-letter code, full state name, then ZIP-prefix fallback. Trailing country phrases ("United States", "USA") are stripped before detection, so KY rows carrying a country suffix are not mis-flagged. Service-role key required; refuses to run against any project other than `ursmecdpgtqckacyhnko`. Dry-run by default; `--apply` deletes and prints the regenerate-pages command. A `--delete-from <csv>` mode deletes the exact ids listed in a reviewed CSV; it backs up the full rows first and re-checks each address against the current parser, warning before it deletes anything that now resolves to Kentucky.
+
+**Record count.** The purge dropped the verified count below the prior 1,794. Update Section 1, `README.md`, and any count references once the regenerate-and-push completes.
+
+**Known follow-up (the durable fix, not yet built).** This purge removes out-of-state rows at maintenance time, but Lane 1 scraping is still not state-gated at intake, so a fresh quarterly scrape can re-introduce neighboring-state businesses (Indiana, Ohio). The permanent fix is a state filter in `prepare.py`: at the dispositioning step, drop any row whose address positively resolves to a non-KY state, ideally via a shared address-resolver module imported by both `prepare.py` and `purge_out_of_state.py` so the two never drift apart. Until that exists, the quarterly safeguard is to run `clean_addresses.py --apply` then `purge_out_of_state.py` after every refresh; `quarterly_refresh.sh` does this automatically through the dry run and leaves the delete as a manual confirm.
+
+### June 2026: Category-seeded discovery lane (Lane 1b)
+
+Built `pipeline/discover_categories.py` to find a segment the main scraper structurally misses. The main lane (scrape.py Phase 1) keeps a Maps result only when Google's self-identified ownership attribute is present, which is the fix that stopped chains from being mislabeled. The cost of that precision is that immigrant- and ethnic-owned retail (carnicerias, mercados, asian markets, halal grocers) is almost always dropped, because those owners rarely set the attribute. A consumer Google search for "hispanic grocery louisville" returns many such stores that are nowhere in the directory.
+
+**How it works.** It imports `scrape.py` and composes its Maps engine, cache, evidence check, and skip-known logic rather than duplicating them. It searches Maps on category terms across `CATEGORY_CITIES`, then sorts each business into a tier: Tier A auto-accepts when Google's ownership attribute is present (tagged from the attribute); Tier B runs the business website through the same Phase 4 on-page evidence check and accepts only on an explicit ownership statement; Tier C is everything else, written to `category_review.csv` for manual confirmation. The governing rule: the category term decides what is surfaced, never what is tagged, so the lane cannot reintroduce the mislabeling the attribute gate prevents. Seed terms are split into a name_evident bucket (term implies a group, e.g. carniceria to Latine-Owned, used as a suggested type on the review row) and an ambiguous bucket (international grocery, halal market) whose suggested type is left blank on purpose.
+
+**Modes.** `--triage` labels `category_review.csv` (Strong / Review / Ambiguous / Drop?) and sorts it, using accent-insensitive name corroboration plus a chain check, so the manual pass is fast. `--promote` moves rows the human marked Keep? = yes (with a confirmed type) into the passes file. `prepare.py` reads `businesses_scraped_categories.csv` and its sources file alongside the main scrape, so verified passes flow through the normal disposition, dedupe, and upload path; category-lane rows with no address are routed to "Needs review" rather than auto-approved.
+
+**Key finding: Tier B is effectively zero for this segment.** Grocery and market websites carry hours and locations, not ownership statements, so the on-page evidence check almost never fires. The first pilot (21 terms x 6 cities, 126 SerpApi searches) produced 33 Tier A, 0 Tier B, and 434 Tier C. The practical consequence is that this lane is a manual-review generator, not an auto-verification engine. Triage made the 434 workable: 162 Strong (name and term agree, KY address), 167 Review (mostly drops, where generic butchers and chains that surfaced under an ethnic term sit), 96 Ambiguous, 9 likely chains.
+
+**Scaling note and the values call.** Manual-review volume scales with city count; a full statewide pass would add roughly 800 to 1,000 more Tier C rows. Targeting dense-immigrant-retail metros beats a blind statewide sweep. And even a Strong row is corroboration, not proof of ownership, so the inclusion standard for keeping a name-only match is a values decision the operator sets; the script never auto-tags. Outputs (`businesses_scraped_categories.csv`, `category_review.csv`, `category_progress.json`) live in the gitignored `data/` folder.

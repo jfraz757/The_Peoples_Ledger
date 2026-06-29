@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# The People's Ledger — Monthly Link Status Check
-# Run this once a month from the repo root
+# The People's Ledger Monthly Link Status Check
+# Run once a month from the repo root
 # Usage: bash monthly_link_check.sh
 # ============================================================
 
@@ -10,7 +10,7 @@ REPO="C:/Users/jfraz/The_Peoples_Ledger"
 
 echo ""
 echo "============================================================"
-echo "  The People's Ledger — Monthly Maintenance"
+echo "  The People's Ledger Monthly Maintenance"
 echo "  $(date '+%B %Y')"
 echo "============================================================"
 echo ""
@@ -19,10 +19,12 @@ echo ""
 cd "$REPO" || { echo "ERROR: Could not navigate to repo. Check REPO path."; exit 1; }
 
 echo "[1/1] Running link status check..."
-echo "      This re-checks all business website URLs and updates"
-echo "      the status field (Active / Inactive / No Website)."
+echo "      Re-checks all business website URLs and updates the"
+echo "      status field (Active / Inactive / No Website)."
+echo "      Buyblack URL fixes are NOT run here (they cost SerpApi)."
+echo "      Run 'python pipeline/maintain.py --buyblack' only as needed."
 echo ""
-"$PYTHON" check_link_status.py
+"$PYTHON" pipeline/maintain.py
 
 echo ""
 echo "============================================================"
