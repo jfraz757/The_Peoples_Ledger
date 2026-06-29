@@ -22,3 +22,7 @@ gitignore.txt
 .DS_Store
 Thumbs.db
 .vscode/
+__pycache__/
+*.pyc
+__pycache__/
+*.pyc
