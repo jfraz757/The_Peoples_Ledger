@@ -1835,22 +1835,34 @@
     return allBusinessNames.filter(b => b.business_name.toLowerCase().includes(q)).slice(0, 8);
   }
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   function buildAcDropdown(matches, query, dropdownId, onSelect) {
     const dropdown = document.getElementById(dropdownId);
     if (!matches.length || !query) { dropdown.classList.remove("visible"); return; }
     const q = query.toLowerCase();
     dropdown.innerHTML = matches.map(b => {
       const idx  = b.business_name.toLowerCase().indexOf(q);
-      const name = idx === -1 ? b.business_name
-        : b.business_name.slice(0, idx)
-          + `<strong style="color:#FFD700;">${b.business_name.slice(idx, idx + query.length)}</strong>`
-          + b.business_name.slice(idx + query.length);
-      const sub  = b.address ? `<div class="ac-item-sub">${b.address}</div>` : "";
-      const safeName = b.business_name.replace(/'/g, "&#39;");
-      return `<div class="ac-item" data-name="${b.business_name}" onclick="${onSelect}('${safeName}')">
+      const name = idx === -1 ? escapeHtml(b.business_name)
+        : escapeHtml(b.business_name.slice(0, idx))
+          + `<strong style="color:#FFD700;">${escapeHtml(b.business_name.slice(idx, idx + query.length))}</strong>`
+          + escapeHtml(b.business_name.slice(idx + query.length));
+      const sub  = b.address ? `<div class="ac-item-sub">${escapeHtml(b.address)}</div>` : "";
+      return `<div class="ac-item" data-name="${escapeHtml(b.business_name)}">
         <div class="ac-item-name">${name}</div>${sub}
       </div>`;
     }).join("");
+    // Wire click handlers in JS via data-name. This is robust against apostrophes,
+    // quotes, and other characters that break inline onclick string arguments.
+    dropdown.querySelectorAll(".ac-item").forEach(item => {
+      item.addEventListener("click", () => onSelect(item.dataset.name));
+    });
     dropdown.classList.add("visible");
   }
 
@@ -1868,7 +1880,7 @@
     warning.classList.remove("visible");
     if (!q) { document.getElementById("new-name-dropdown").classList.remove("visible"); return; }
     const matches = acMatches(q);
-    buildAcDropdown(matches, q, "new-name-dropdown", "selectNewBusiness");
+    buildAcDropdown(matches, q, "new-name-dropdown", selectNewBusiness);
   });
 
   document.getElementById("new-name").addEventListener("keydown", function(e) {
@@ -1904,7 +1916,7 @@
     const q = this.value.trim();
     if (!q) { document.getElementById("update-name-dropdown").classList.remove("visible"); return; }
     const matches = acMatches(q);
-    buildAcDropdown(matches, q, "update-name-dropdown", "selectUpdateBusiness");
+    buildAcDropdown(matches, q, "update-name-dropdown", selectUpdateBusiness);
   });
 
   document.getElementById("update-name").addEventListener("keydown", function(e) {
