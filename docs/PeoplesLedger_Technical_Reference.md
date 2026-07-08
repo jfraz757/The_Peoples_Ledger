@@ -308,7 +308,7 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 - Kentucky Finance and Administration Cabinet (MWBE certification listings — `.xlsx`, converted to CSV)
 - City of Louisville Human Relations Commission (diversitycompliance.com)
 
-**Note from June 2026 data run:** The KY Transportation Cabinet and KY Finance & Administration Cabinet no longer include minority type identification in their exports — a result of anti-DEI legislative pressure. However, the **Louisville HRC database still includes both `Ethnicity` and `Certification Type` fields** in its CSV export, confirmed June 2026. A merge of HRC data (277 records, 208 unique companies) against the existing Supabase database was completed in June 2026, adding `certification_type` and `business_category` data where matches were found. The HRC export remains a reliable source for Louisville-area businesses with government certification data.
+**Note from June 2026 data run:** The KY Transportation Cabinet and KY Finance & Administration Cabinet no longer include minority type identification in their exports. However, the **Louisville HRC database still includes both `Ethnicity` and `Certification Type` fields** in its CSV export, confirmed June 2026. A merge of HRC data (277 records, 208 unique companies) against the existing Supabase database was completed in June 2026, adding `certification_type` and `business_category` data where matches were found. The HRC export remains a reliable source for Louisville-area businesses with government certification data.
 
 ---
 

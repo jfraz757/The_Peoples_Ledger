@@ -84,6 +84,28 @@ Steps 5 and 6 are the interim out-of-state safeguard. Lane 1 scraping is not yet
 
 ---
 
+## After approving a community submission (admin.html)
+
+Approving a "new business" submission in admin.html inserts straight into
+the live `businesses` table with no `industry` and whatever `services_products`
+text the submitter typed (often blank or thin). Run this after any batch of
+approvals so new submissions are actually discoverable:
+
+```bash
+python pipeline/ledger.py enrich-new      # or: python pipeline/enrich_submissions.py
+node generate-business-pages.js
+git add -A && git commit -m "Publish new submissions" && git push
+```
+
+`enrich_submissions.py` only looks at submissions approved since its last run
+(tracked in `data/.enrich_submissions_state.json`, gitignored), matches each
+one to its `businesses` row by exact name, and fills industry/services via
+Claude — cheaper than a full-table `enrich.py` pass and safe to re-run anytime.
+`--dry-run` previews without writing or advancing the watermark; `--since
+<ISO timestamp>` overrides it if you need to re-process older approvals.
+
+---
+
 ## As Needed
 
 | Script | When to use | Cost |

@@ -75,6 +75,17 @@ def publish():
     print("Then update the record count in README.md and the technical reference.")
 
 
+def enrich_new():
+    """Fill industry + services for businesses whose submission was approved
+    since the last run of this verb. Run after approving in admin.html."""
+    run("enrich_submissions.py",
+        label="Enrich businesses.industry/services_products for newly-approved submissions")
+    print("\n" + "-"*64)
+    print("Submission enrichment done. To publish the site:")
+    print("        node generate-business-pages.js")
+    print("        git add -A && git commit -m \"Publish new submissions\" && git push")
+
+
 def maintain():
     """Read-only health check of the live table. Nothing here changes data."""
     run("clean_addresses.py",
@@ -94,12 +105,13 @@ def maintain():
 
 USAGE = """The People's Ledger runner. Usage:
 
-  python pipeline/ledger.py prep       prepare + resolve_review, then stop for your review
-  python pipeline/ledger.py publish    upload + enrich (run after you review)
-  python pipeline/ledger.py maintain   live-table health checks (read-only, dry run)
+  python pipeline/ledger.py prep         prepare + resolve_review, then stop for your review
+  python pipeline/ledger.py publish      upload + enrich (run after you review)
+  python pipeline/ledger.py enrich-new   enrich only newly-approved submissions (run after admin.html approvals)
+  python pipeline/ledger.py maintain     live-table health checks (read-only, dry run)
 """
 
-VERBS = {"prep": prep, "publish": publish, "maintain": maintain}
+VERBS = {"prep": prep, "publish": publish, "enrich-new": enrich_new, "maintain": maintain}
 
 
 def main():
