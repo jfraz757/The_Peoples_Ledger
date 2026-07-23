@@ -24,6 +24,7 @@ The People's Ledger is a free, public, searchable directory of underrepresented 
 **Hosting:** GitHub Pages
 **Font:** Google Fonts (Michroma — display only; Arial for body)
 **Favicon lookup:** Google Favicon API
+**Analytics:** Cloudflare Web Analytics (automatic mode — zone is Cloudflare-proxied, no code required) + Microsoft Clarity (session recordings/heatmaps, project ID `xr6q4yw2ld`). Clarity snippet is in `index.html`, `about.html`, and every generated `businesses/*.html` page (baked into the `generate-business-pages.js` template, so it survives regeneration) — everything except `admin.html`. Added July 2026.
 
 **Supabase credentials (hardcoded in index.html and about.html — intentional):**
 ```
