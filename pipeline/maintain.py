@@ -45,9 +45,19 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                           "AppleWebKit/537.36 Chrome/120.0 Safari/537.36"}
 BUYBLACK_SKIP = ["buyblack.org", "facebook.com/search", "google.com"]
 
+# Facebook returns 400 to every scripted request regardless of whether the page
+# is real (confirmed: a live page, a public figure's page, and a nonexistent
+# page all return 400). Instagram returns 200 for every URL including fake ones.
+# Neither status code carries any liveness signal, so we don't penalize a
+# business for a check we can't actually perform — default to Active instead
+# of falsely flagging real, active businesses as "Link Inactive".
+SOCIAL_SKIP = ["facebook.com", "instagram.com", "fb.com"]
+
 
 # ── link status ───────────────────────────────────────────────────────────────
 def check_url(url):
+    if any(domain in url.lower() for domain in SOCIAL_SKIP):
+        return "Active"
     try:
         if not url.startswith("http"):
             url = "https://" + url
