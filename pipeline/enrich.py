@@ -33,8 +33,16 @@ industry. Recommended full sequence after the deterministic SQL renames:
 
 .env (repo root):
     SUPABASE_URL=...
-    SUPABASE_KEY=...          # publishable key is fine (read + update under your RLS)
+    SUPABASE_SERVICE_ROLE_KEY=...   # this script WRITES; see note below
     ANTHROPIC_API_KEY=...
+
+This used to read SUPABASE_KEY with the comment "publishable key is fine (read + update
+under your RLS)". That was only true because anon held a table-wide UPDATE grant on
+`businesses` -- i.e. because anyone on the internet could also rewrite the directory with
+the key published in index.html. That grant was revoked in July 2026 (restrict_anon_grants.sql),
+so the publishable key can no longer write, and this script needs the service role key.
+
+Do not "fix" a permission error here by re-granting anon write access. That reopens the hole.
 """
 
 import os
@@ -48,8 +56,18 @@ REPO_ROOT = os.path.dirname(PIPELINE_DIR)
 load_dotenv(os.path.join(REPO_ROOT, ".env"))
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Writes require the service role key. Named explicitly rather than reusing SUPABASE_KEY,
+# which is ambiguous: .env has historically defined SUPABASE_KEY twice (once secret, once
+# publishable) and dotenv silently keeps the LAST one, so scripts were picking up whichever
+# happened to be lower in the file.
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+if not SUPABASE_KEY:
+    raise SystemExit(
+        "SUPABASE_SERVICE_ROLE_KEY is missing from .env. This script writes to `businesses`, "
+        "which anon can no longer do. Do not substitute the publishable key."
+    )
 MODEL = "claude-sonnet-4-6"
 SLEEP = 1.2
 MIN_SERVICES_LEN = 25  # services text shorter than this is treated as "thin"

@@ -355,7 +355,43 @@ where table_schema='public' and table_name in ('businesses','submissions')
   and grantee in ('anon','authenticated') order by table_name, grantee, privilege_type;
 ```
 
-Note the over-permissive **policies** still exist — the grant revoke is what blocks access now, since both gates must pass. Re-granting a privilege later would silently reopen everything. `restrict_anon_grants.sql` includes the `pg_policy` query to find and drop them.
+### Which operations were actually exploitable
+
+Grants alone do not tell you this — the policy has to permit it too. Captured `pg_policy` state, 2026-07-29 (roles `{-}` = PUBLIC, so anon and authenticated both):
+
+| table | policy | cmd | using | exploitable? |
+|---|---|---|---|---|
+| `businesses` | Allow public insert | INSERT | — | **yes** — inject businesses straight into the live directory, bypassing `submissions` and approval entirely |
+| `businesses` | Allow public select | SELECT | `true` | intended — the directory listing |
+| `businesses` | Allow public update | UPDATE | `true` | **yes** — rewrite all 1,443 records |
+| `submissions` | Allow public insert on submissions | INSERT | — | intended — the public forms |
+| `submissions` | Allow public select on submissions | SELECT | `true` | **yes** — read every submitter name and email |
+| `submissions` | Allow public update on submissions | UPDATE | `true` | **yes** — alter the moderation queue |
+
+**There were no DELETE policies.** RLS is enabled on both tables (`relrowsecurity = true`, verified), so DELETE was denied on real rows despite the grant. `TRUNCATE` does bypass RLS, but PostgREST exposes no way to invoke it.
+
+A probe using `?id=eq.-1` to test DELETE returned `204` and was initially misread as "permitted". It is not a valid test: a filter matching zero rows affects zero rows, so nothing violates the policy and the request succeeds regardless. **For UPDATE and DELETE, a zero-row filter proves the grant exists, not that the policy allows it.** To test a policy you need a filter that matches a real row, or read `pg_policy` directly. Reading `submissions` was a valid test only because it returned actual rows.
+
+Four genuine holes, all closed by `restrict_anon_grants.sql`. Drop the policies too with `drop_permissive_policies.sql` — they are unreachable now, but re-granting any privilege later would silently reopen everything.
+
+### Why the public write access existed — pipeline scripts and the duplicate SUPABASE_KEY
+
+It was not an oversight, it was **load-bearing**, which is why it survived review: removing it appeared to break things.
+
+`enrich.py`, `enrich_submissions.py`, `maintain.py` and `upload_to_supabase.py` all write to `businesses` and all read `os.getenv("SUPABASE_KEY")`. `.env` defined `SUPABASE_KEY` **twice** — once `sb_secret_…`, once `sb_publishable_…`. **dotenv keeps only the last occurrence**, so they silently received the *publishable* key, and their writes only worked because anon held table-wide INSERT/UPDATE grants.
+
+The scripts' docstrings contradicted each other on the same variable:
+
+- `upload_to_supabase.py`: "the service role key, NOT the read-only publishable key"
+- `enrich.py`: "publishable key is fine (read + update under your RLS)"
+
+The duplicate `.env` entry looks like the value being swapped by hand depending on which script was being run.
+
+**Fixed July 2026:** all four now read `SUPABASE_SERVICE_ROLE_KEY` explicitly and `raise SystemExit` with a clear message if it is absent, so a missing key fails loudly instead of silently falling back to a key that cannot write. Read-only scripts (`scrape.py`, `prepare.py`, `discover_categories.py`) still use `SUPABASE_KEY` (publishable), which is correct.
+
+**Delete the stale `SUPABASE_KEY=sb_secret_…` line from `.env`.** Nothing reads `SUPABASE_KEY` for writes any more, so it is now only a tripwire.
+
+**The rule: never share one env var name between a privileged and an unprivileged key.** Name them for the privilege level, not the service. And when an over-broad permission looks deliberate, find what depends on it before assuming it is intentional — here the dependency was a variable-naming bug.
 
 ### Legacy notes
 

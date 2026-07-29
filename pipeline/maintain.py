@@ -15,8 +15,12 @@ Run with no flags = links only (the safe monthly job).
 
 .env (repo root):
     SUPABASE_URL=...
-    SUPABASE_KEY=...
+    SUPABASE_SERVICE_ROLE_KEY=...   # this script WRITES status/website back to businesses
     SERPAPI_KEY=...        # only needed for --buyblack
+
+Needs the service role key: anon's UPDATE grant on `businesses` was revoked in July 2026
+(restrict_anon_grants.sql) because it let anyone with the key from index.html rewrite the
+directory. Do not re-grant anon write access to make this run.
 
 Usage:
     python pipeline/maintain.py               # link status only
@@ -36,8 +40,16 @@ REPO_ROOT    = os.path.dirname(PIPELINE_DIR)
 load_dotenv(os.path.join(REPO_ROOT, ".env"))
 
 SUPABASE_URL  = os.getenv("SUPABASE_URL")
-SUPABASE_KEY  = os.getenv("SUPABASE_KEY")
+# Service role required -- see module docstring. Named explicitly because .env has
+# historically defined SUPABASE_KEY twice and dotenv keeps only the last occurrence.
+SUPABASE_KEY  = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SERPAPI_KEY   = os.getenv("SERPAPI_KEY")
+
+if not SUPABASE_KEY:
+    raise SystemExit(
+        "SUPABASE_SERVICE_ROLE_KEY is missing from .env. This script writes to `businesses`, "
+        "which anon can no longer do. Do not substitute the publishable key."
+    )
 TIMEOUT       = 8
 SLEEP_LINKS   = 0.5
 SLEEP_BUYBLACK = 1.5

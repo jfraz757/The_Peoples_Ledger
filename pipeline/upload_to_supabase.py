@@ -7,10 +7,15 @@ Reads data/businesses_prepared.csv and inserts ONLY the rows marked
 The prepared file carries Disposition, Reason, and Source columns for your
 review. Those are dropped here; they never reach the database.
 
-.env (same folder as this script):
+.env (repo root):
     SUPABASE_URL=https://ursmecdpgtqckacyhnko.supabase.co
-    SUPABASE_KEY=<key with INSERT rights - the service role key, NOT the
-                  read-only publishable key used by the scraper>
+    SUPABASE_SERVICE_ROLE_KEY=<the service role key>
+
+This script always needed INSERT rights, and the docstring used to say so while telling you
+to put the service role key in SUPABASE_KEY. Other pipeline scripts documented the opposite
+("publishable key is fine") for the SAME variable, which is why .env ended up defining
+SUPABASE_KEY twice -- once secret, once publishable. dotenv keeps only the last occurrence,
+so which key you actually got depended on line order. It now reads the unambiguous name.
 
 Usage:
     python upload_to_supabase.py
@@ -30,8 +35,14 @@ DATA_DIR     = os.path.join(REPO_ROOT, "data")
 load_dotenv(os.path.join(REPO_ROOT, ".env"))
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 CSV_PATH     = os.path.join(DATA_DIR, "businesses_prepared.csv")
+
+if not SUPABASE_KEY:
+    raise SystemExit(
+        "SUPABASE_SERVICE_ROLE_KEY is missing from .env. This script inserts into `businesses`, "
+        "which anon can no longer do. Do not substitute the publishable key."
+    )
 BATCH_SIZE   = 100
 
 DB_RENAME = {

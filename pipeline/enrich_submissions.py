@@ -34,8 +34,12 @@ Usage
 
 .env (repo root):
     SUPABASE_URL=...
-    SUPABASE_KEY=...          # publishable key is fine (read + update under your RLS)
+    SUPABASE_SERVICE_ROLE_KEY=...   # this script READS submissions and WRITES businesses
     ANTHROPIC_API_KEY=...
+
+Needs the service role key for both halves: anon lost SELECT on `submissions` (that table
+held submitter names and emails and was publicly readable until July 2026) and lost UPDATE
+on `businesses`. See restrict_anon_grants.sql. Do not re-grant anon to make this run.
 """
 
 import os
@@ -56,8 +60,16 @@ import enrich  # reuse classify_industry, infer_services, is_blank, etc.
 
 load_dotenv(os.path.join(REPO_ROOT, ".env"))
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Service role required -- see module docstring. Named explicitly because .env has
+# historically defined SUPABASE_KEY twice and dotenv keeps only the last occurrence.
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+if not SUPABASE_KEY:
+    raise SystemExit(
+        "SUPABASE_SERVICE_ROLE_KEY is missing from .env. This script reads `submissions` and "
+        "writes `businesses`; anon can do neither. Do not substitute the publishable key."
+    )
 
 
 # --- watermark -----------------------------------------------------------
