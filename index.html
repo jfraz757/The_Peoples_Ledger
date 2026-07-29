@@ -1213,22 +1213,16 @@
           <label class="checkbox-label"><input type="checkbox" value="Muslim-Owned" /> Muslim-Owned</label>
         </div>
       </div>
-      <div class="form-group">
-        <label>State Certification Type (select all that apply)</label>
-        <div class="checkbox-group">
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="DBE" /> DBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="MBE" /> MBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="WBE" /> WBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="MWBE" /> MWBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="SBE" /> SBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="ACDBE" /> ACDBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="VBE" /> VBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="SDVBE" /> SDVBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="LGBTBE" /> LGBTBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="Not Certified" /> Not Certified</label>
-          <label class="checkbox-label"><input type="checkbox" name="new-cert" value="Unknown" /> Unknown</label>
-        </div>
-      </div>
+      <!-- State Certification Type checkboxes removed July 2026.
+           certification_type records a GOVERNMENT-granted status (DBE, MBE, WBE, ...) and may
+           only originate from one of the three certifying bodies: Louisville HRC, KY
+           Transportation Cabinet, KY Finance & Administration Cabinet. A submitter cannot
+           self-assert it, because there is no way to distinguish an unverified claim from
+           verified certifier data once both sit in the same column.
+           Blank is the CORRECT value for the great majority of businesses here -- it means
+           "minority-owned by our verification, holding no state certification", which is
+           accurate and not missing data. Self-reported OWNERSHIP is still collected above and
+           is welcome; only the certification claim is not. Do not re-add these checkboxes. -->
       <div class="form-group">
         <label>Kentucky Based?</label>
         <select id="new-ky">
@@ -1325,22 +1319,11 @@
           <label class="checkbox-label"><input type="checkbox" name="upd-ownership" value="Muslim-Owned" /> Muslim-Owned</label>
         </div>
       </div>
-      <div class="form-group">
-        <label>Certification Type (select all that apply)</label>
-        <div class="checkbox-group">
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="DBE" /> DBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="MBE" /> MBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="WBE" /> WBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="MWBE" /> MWBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="SBE" /> SBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="ACDBE" /> ACDBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="VBE" /> VBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="SDVBE" /> SDVBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="LGBTBE" /> LGBTBE</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="Not Certified" /> Not Certified</label>
-          <label class="checkbox-label"><input type="checkbox" name="upd-cert" value="Unknown" /> Unknown</label>
-        </div>
-      </div>
+      <!-- Certification Type checkboxes removed July 2026 -- same reason as the Add-a-Business
+           tab above. This path was the more serious of the two: admin.html's approve-update
+           handler PATCHed certification_type straight onto the live businesses row, so an
+           unverified claim submitted here would publish. The approve handler no longer copies
+           the field at all. Do not re-add these checkboxes. -->
       <div class="form-group">
         <label>Kentucky Based?</label>
         <select id="upd-ky">
@@ -1697,11 +1680,10 @@
       return;
     }
 
-    const ownershipChecked = [...document.querySelectorAll("#tab-new .checkbox-group input[type=checkbox]:not([name='new-cert']):checked")];
+    // The :not([name='new-cert']) exclusion is gone with the cert checkboxes themselves --
+    // every checkbox in this tab is now an ownership checkbox.
+    const ownershipChecked = [...document.querySelectorAll("#tab-new .checkbox-group input[type=checkbox]:checked")];
     const minorityType = ownershipChecked.map(c => c.value).join(", ");
-
-    const certChecked = [...document.querySelectorAll("input[name='new-cert']:checked")];
-    const certType = certChecked.map(c => c.value).join(", ");
 
     const btn = event.target;
     btn.textContent = "Submitting...";
@@ -1725,7 +1707,8 @@
           services_products: document.getElementById("new-services").value.trim() || null,
           minority_type:     minorityType || null,
           industry:          document.getElementById("new-industry").value || null,
-          certification_type: certType || null,
+          // certification_type is deliberately NOT sent. It may only come from a certifying
+          // body (Louisville HRC / KY Transportation / KY Finance), never from a submitter.
           kentucky_based:    document.getElementById("new-ky").value || null,
           submitter_name:    sName,
           submitter_email:   sEmail,
@@ -1769,11 +1752,9 @@
     const ownershipChecked = [...document.querySelectorAll("input[name='upd-ownership']:checked")];
     const minorityType = ownershipChecked.length ? ownershipChecked.map(c => c.value).join(", ") : null;
 
-    const certChecked = [...document.querySelectorAll("input[name='upd-cert']:checked")];
-    const certType = certChecked.length ? certChecked.map(c => c.value).join(", ") : null;
-
-    // Require at least one field to be filled
-    if (!phone && !website && !address && !services && !industry && !ky && !minorityType && !certType && !notes) {
+    // Require at least one field to be filled. certType is no longer part of this check --
+    // the cert checkboxes are gone, so it can never be the only thing a submitter filled in.
+    if (!phone && !website && !address && !services && !industry && !ky && !minorityType && !notes) {
       alert("Please fill in at least one field to correct.");
       return;
     }
@@ -1800,7 +1781,7 @@
           services_products:  services,
           industry:           industry,
           minority_type:      minorityType,
-          certification_type: certType,
+          // certification_type deliberately NOT sent -- see the note by the removed checkboxes.
           kentucky_based:     ky,
           update_notes:       notes,
           submitter_name:     sName,
