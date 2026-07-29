@@ -321,7 +321,45 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 
 ## 11. RLS Policies
 
-RLS is enabled on the `businesses` table. Per the README, public read, insert, and update access is granted. The `submissions` table also has RLS. If you hit permission errors:
+### Grants vs policies — the distinction that hid a critical hole
+
+**RLS being "enabled" tells you almost nothing on its own.** A request must pass **two** independent gates: the role's `GRANT` (which operations and columns) and the RLS policy (which rows). Checking only one is how the following went unnoticed until July 2026.
+
+Until then, `anon` held `DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE` on **both** `businesses` and `submissions` — and the RLS policies were permissive enough that none of it was blocked. Verified empirically with zero-row filters (`?id=eq.-1`, matching nothing): `UPDATE` and `DELETE` returned `204` on both tables. The publishable key that maps to `anon` is in index.html's page source by design, so with it anyone could:
+
+```
+DELETE /rest/v1/businesses?id=gt.0      -- destroy all 1,443 businesses
+PATCH  /rest/v1/businesses?id=gt.0      -- rewrite every record
+GET    /rest/v1/submissions?select=*    -- read all 18 submitter names + emails
+DELETE /rest/v1/submissions?id=gt.0     -- wipe the moderation queue
+```
+
+The `submissions` read was a privacy exposure, not just an integrity one — `submitter_name` and `submitter_email` were given on the understanding they reach the operator.
+
+Both documents describing this were wrong. README.md claimed "a read-only publishable key paired with RLS policies" — it was not read-only. This section claimed "public read, insert, and update access is granted" — closer, but neither mentioned `DELETE` or `TRUNCATE`. **The lesson: never document a permission model from intent. Query `information_schema.table_privileges` and read the actual grants.**
+
+**Fixed July 2026** via `restrict_anon_grants.sql`, which revokes everything and re-grants only what the site uses:
+
+| table | anon holds | why |
+|---|---|---|
+| `businesses` | `SELECT` | directory listing + `search_businesses` / `suggest_search` RPCs |
+| `submissions` | `INSERT` | the add-a-business and suggest-a-correction forms |
+
+`authenticated` was restricted identically. Nothing uses that role today (public site is `anon`, admin panel is `service_role`), but leaving it wide would have silently reopened the hole the moment real logins were added.
+
+Post-fix verification — `businesses` DELETE/UPDATE, `submissions` SELECT/DELETE all return `42501`; `businesses` SELECT returns `200`; both RPCs return full results (`total_count=1443`); `submissions` INSERT still permitted. Re-check with:
+
+```sql
+select table_name, grantee, privilege_type from information_schema.table_privileges
+where table_schema='public' and table_name in ('businesses','submissions')
+  and grantee in ('anon','authenticated') order by table_name, grantee, privilege_type;
+```
+
+Note the over-permissive **policies** still exist — the grant revoke is what blocks access now, since both gates must pass. Re-granting a privilege later would silently reopen everything. `restrict_anon_grants.sql` includes the `pg_policy` query to find and drop them.
+
+### Legacy notes
+
+The `submissions` table also has RLS. If you hit permission errors:
 - Public users reading `businesses` → SELECT policy required
 - Form submissions posting to `submissions` → INSERT policy required
 - Admin approving submissions and inserting into `businesses` → INSERT policy on `businesses` required

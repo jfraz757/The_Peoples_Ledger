@@ -8,6 +8,10 @@ admin.html
 # The live site reads from Supabase, so none of this belongs in the repo.
 data/
 
+# Database backups. These contain the full submissions table including submitter
+# names and email addresses (PII) -- they must never be committed.
+backups/
+
 # Old spreadsheet archive
 Minority_Biz_Database_Project/Old_KY_Biz_Spreadsheets/
 

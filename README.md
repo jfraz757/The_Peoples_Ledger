@@ -190,7 +190,20 @@ Open `admin.html` locally. It is gitignored and never pushed to GitHub.
 
 API keys are loaded from a local `.env` file excluded from version control through `.gitignore`. Never commit your `.env`. The entire `data/` folder is gitignored as well, so no scraped records or caches reach the repo.
 
-The Supabase `businesses` table has Row Level Security enabled. Public read access is granted through explicit RLS policies. Bulk uploads and admin inserts use the service role key, which is kept out of the repo. The publishable key is intentionally present in `index.html`, which is the correct and documented model for browser-facing Supabase applications: a read-only publishable key paired with RLS policies. The admin panel, `admin.html`, is excluded from version control entirely and exists only on local machines.
+The Supabase `businesses` table has Row Level Security enabled. Bulk uploads and admin inserts use the service role key, which is kept out of the repo. The admin panel, `admin.html`, is excluded from version control entirely and exists only on local machines.
+
+The publishable key is intentionally present in `index.html` — the correct model for browser-facing Supabase applications. But that model only holds if the key's role is actually restricted, and **ours was not until July 2026.** This section previously described it as "a read-only publishable key"; in fact `anon` held `DELETE`, `TRUNCATE`, `UPDATE` and `INSERT` on both `businesses` and `submissions`, and the RLS policies were not blocking any of it. Anyone reading the page source could have deleted the entire directory or read every submitter's name and email.
+
+It is now genuinely restricted: `anon` has `SELECT` on `businesses` and `INSERT` on `submissions`, and nothing else. See `restrict_anon_grants.sql` and Section 11 of the technical reference.
+
+**Enabling RLS is not sufficient on its own.** Every request passes two independent gates — the role's `GRANT` and the RLS policy — and this hole existed because only the policy half was ever checked. Verify grants directly rather than trusting intent:
+
+```sql
+select table_name, grantee, privilege_type from information_schema.table_privileges
+where table_schema='public' and grantee in ('anon','authenticated');
+```
+
+Database backups are written by `backup_supabase.py` to `backups/`, which is gitignored — the dump contains submitter names and email addresses. The free tier has no automatic backups, so this is the only copy.
 
 ---
 
