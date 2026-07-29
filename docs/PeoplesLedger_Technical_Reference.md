@@ -6,7 +6,15 @@
 
 ## 1. Project Overview
 
-The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address. The directory currently contains roughly 1,794 verified, deduplicated records.
+The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address.
+
+**Record count: 1,443** (verified against the live table 2026-07-29). The figure was documented as 1,794 for a month after the out-of-state purge dropped it; Section 12 and `README.md` carried the same stale number. **When the count changes, update it in all three places or none of them will be trustworthy.** Get the real number with:
+
+```bash
+python -c "import json;print(len(json.load(open('backups/<latest>/businesses.json',encoding='utf-8'))))"
+```
+
+Current live state (2026-07-29): status `Active` 943 / `No Website` 224 / `Inactive` 184 / null 92 · `certification_type` populated on 116, blank on 1,327 · `industry` and `services_products` complete on all 1,443 · 95 rows have no address.
 
 **Live URL:** thepeoplesledger.net
 **GitHub Repo:** github.com/jfraz757/The_Peoples_Ledger
@@ -39,45 +47,79 @@ SUPABASE_KEY = "sb_publishable_A0zmuZVHVPtosZrNdFE4GQ_sITuTrkg"
 
 ## 3. File Structure
 
+**This tree must stay complete.** A Claude session reads it as the inventory of the repo and will not go looking for what it does not list. In July 2026 a session read this document end to end, then rebuilt an intake cleaner that already existed as `Minority_Biz_Database_Project/data_gather_.ipynb` — because that folder was missing from this tree and the session searched only `pipeline/`. Verified against `git ls-files` 2026-07-29.
+
 ```
 The_Peoples_Ledger/
 ├── index.html                  # Main directory page (served by GitHub Pages)
 ├── about.html                  # About page with live business count
-├── admin.html                  # Local-only moderation tool (gitignored)
+├── admin.html                  # Local-only moderation tool (GITIGNORED)
 ├── CNAME                       # thepeoplesledger.net
 ├── README.md                   # Project overview + runbook (committed)
-├── .gitignore                  # Excludes .env, admin.html, data/
+├── .gitignore                  # Excludes .env, admin.html, data/, backups/
 ├── generate-business-pages.js  # Builds the static /businesses/ SEO pages
-├── businesses/                 # Generated per-business pages + sitemap (committed)
+├── businesses/                 # 1,443 generated pages + sitemap.xml (committed)
+│
+├── backup_supabase.py          # Dumps all tables to backups/<timestamp>/ as JSON (July 2026)
+├── restrict_anon_grants.sql    # APPLIED July 2026 — revoked anon write access
+├── drop_permissive_policies.sql# APPLIED July 2026 — dropped over-permissive RLS policies
 │
 ├── pipeline/                   # All maintenance scripts (run manually, not deployed)
-│   ├── scrape.py               # Web discovery: Google Maps, listicles, social
-│   ├── discover_categories.py  # Lane 1b: category-seeded discovery (carnicerias, asian markets, etc.)
+│   ├── scrape.py               # Lane 1 web discovery: Google Maps, listicles, social
+│   ├── discover_categories.py  # Lane 1b: category-seeded discovery (carnicerias, asian markets)
 │   ├── prepare.py              # Filter + dedupe a scrape into one dispositioned file
-│   ├── upload_to_supabase.py   # Insert approved rows into the businesses table
-│   ├── enrich.py               # Post-upload: fill industry + services via Claude
-│   ├── enrich_submissions.py   # Same, scoped to businesses from newly-approved admin.html submissions
-│   ├── dedupe_live.py          # One-off/repeatable duplicate cleanup on the live table
-│   ├── clean_addresses.py      # Strip "N/A" tokens from addresses (dry-run default, backs up)
+│   ├── resolve_review.py       # Auto-settles "Needs review" rows by reading the business site
+│   ├── upload_to_supabase.py   # Insert "Good to go" rows into businesses
+│   ├── enrich.py               # Post-upload: fill/repair industry + services via Claude
+│   ├── enrich_submissions.py   # Same, scoped to newly-approved admin.html submissions
+│   ├── dedupe_live.py          # Duplicate cleanup on the live table
+│   ├── clean_addresses.py      # Strip "N/A" tokens from addresses (dry-run default)
 │   ├── purge_out_of_state.py   # Remove rows whose address resolves to a non-KY state
 │   ├── maintain.py             # Link-status check (monthly) + buyblack fix (as needed)
-│   ├── reconcile_certifications.py  # Lane 2: certification spreadsheets (to build)
+│   ├── ledger.py               # Thin orchestrator: prep / publish / maintain / enrich-new
 │   └── view_database.py        # Open a data/ CSV in D-Tale
+│   #  NOTE: there is NO reconcile_certifications.py. Lane 2 intake lives in the
+│   #  Minority_Biz_Database_Project notebook below; the reconcile step does not exist.
 │
-├── data/                       # All working files (gitignored, never committed)
+├── Minority_Biz_Database_Project/     # LANE 2 — certification spreadsheets (committed)
+│   ├── data_gather_.ipynb             # THE EXISTING LANE 2 CLEANER. See Section 6a.
+│   ├── Spreadsheets/
+│   │   ├── Louisville_HRC/            # Louisville_HRC_<Month>_<Year>.csv
+│   │   ├── KY_Transportation_Cabinet/ # KY_Trans_Cab_<Month>_<Year>.csv
+│   │   └── KY_Finance_&_Administration/  # KY_F&A_<Month>_<Year>.csv
+│   └── Old_KY_Biz_Spreadsheets/       # GITIGNORED archive (2023 spreadsheets + verifier)
+│
+├── docs/
+│   ├── PeoplesLedger_Technical_Reference.md   # This file
+│   ├── maintenance_checklist.md       # Monthly / quarterly runbook
+│   ├── order_of_operations.md         # Phase 1 (CSV) vs Phase 2 (live table) ordering
+│   ├── monthly_link_check.sh          # Wrapper: maintain.py
+│   └── quarterly_refresh.sh           # Wrapper: the 6-step quarterly pipeline
+│   #  NOTE: both .sh live HERE, not the repo root. maintenance_checklist.md tells you to
+│   #  run `bash quarterly_refresh.sh` from the root, which fails. Use docs/ on the path.
+│
+├── data/                       # All working files (GITIGNORED, never committed)
 │   ├── businesses_scraped.csv          # Raw scraper output
 │   ├── businesses_scraped_sources.csv  # Per-row source audit
 │   ├── businesses_scraped_checkpoint.csv
-│   ├── scraper_progress.json
+│   ├── scraper_progress.json           # Lane 1 resume state (delete to force a fresh run)
 │   ├── businesses_scraped_categories.csv         # Lane 1b verified passes (read by prepare.py)
 │   ├── businesses_scraped_categories_sources.csv # Lane 1b source audit
-│   ├── category_review.csv                # Lane 1b manual-review queue (Tier C)
-│   ├── category_progress.json             # Lane 1b resume state
+│   ├── category_review.csv             # Lane 1b manual-review queue (Tier C)
+│   ├── category_progress.json          # Lane 1b resume state
 │   ├── businesses_prepared.csv         # prepare.py output (the file you review)
+│   ├── denylist.csv                    # Deliberate drops, from prepare.py --commit-drops
+│   ├── .enrich_submissions_state.json  # enrich_submissions.py watermark
 │   └── cache/                          # Cached HTML, Maps responses, extractions
 │
-└── docs/
-    └── PeoplesLedger_Technical_Reference.md   # This file
+├── backups/                    # GITIGNORED — DB dumps; contain submitter PII
+│
+└── (stray root files, harmless but undocumented until now)
+    ├── env.example             # Template for .env
+    ├── gitignore              # Leftover download, NOT the real .gitignore
+    ├── checkpoint_ky_minority_businesses.csv   # Old checkpoint, 36 KB
+    ├── First_looks.ipynb       # GITIGNORED personal scratch
+    └── .vscode/settings.json
 ```
 
 **admin.html is gitignored** — runs locally only, holds the admin password and the service-role key, never deployed.
@@ -190,15 +232,17 @@ Admin reads /rest/v1/submissions (all statuses, ordered by submitted_at desc)
     status: "Active"
         ↓
   If submission_type = "update":
-    Admin must MANUALLY apply the
-    correction in Supabase table editor
-    (admin.html only marks it approved —
-    it does NOT auto-patch businesses)
+    Look up businesses by EXACT name,
+    PATCH only the submitted fields
+    (auto-applies since June 2026;
+     alerts you if no name match)
         ↓
   PATCH submissions set status = "approved"
 ```
 
-**Update submissions now auto-apply to the `businesses` table (updated June 2026).** When you approve an update submission in admin.html, the admin looks up the business by exact name and PATCHes only the fields that were submitted. Blank fields are ignored. If no exact name match is found, the admin alerts you to apply the correction manually. Any free-text additional notes are shown in the approval alert for your review but do not auto-apply.
+**Update submissions auto-apply to the `businesses` table (since June 2026).** When you approve an update submission, admin.html looks up the business by exact name and PATCHes only the fields that were submitted. Blank fields are ignored. If no exact name match is found, it alerts you to apply the correction manually. Free-text notes are shown in the approval alert for your review but do not auto-apply.
+
+**`certification_type` is excluded from that PATCH (July 2026).** It used to be included, which meant a submitter could self-assert a state certification and have it published on approve. The cert checkboxes are gone from the public form, but that alone was not the fix: `anon` holds `INSERT` on `submissions`, so anyone can POST JSON directly with any `certification_type` — the form is UI, the PATCH line was the write path. admin.html still *displays* a claimed certification so you can see and verify it; it just cannot reach `businesses` automatically. See Section 6a.
 
 ### Data pipeline flow
 
@@ -217,7 +261,59 @@ pipeline/maintain.py  → sets status (Active / Inactive / No Website)
 generate-business-pages.js → regenerates the static /businesses/ pages
 ```
 
-**Lane 2 — Certification spreadsheets (as agencies refresh).** The Louisville HRC, KY Transportation, and KY Finance certification lists are CAPTCHA-protected manual downloads and the only source of `certification_type`. They must NOT go through prepare.py, which strips chains and out-of-state records that are legitimate on an authoritative list. Reconcile them against the live table with fuzzy matching, fill certification_type on matches, and insert genuine new businesses. (`reconcile_certifications.py` is not built yet.)
+**Lane 2 — Certification spreadsheets (as agencies refresh).** See Section 6a below for what exists and what does not. They must NOT go through prepare.py, which strips chains and out-of-state records that are legitimate on an authoritative list.
+
+---
+
+## 6a. Lane 2 — Certification spreadsheets (what exists, what does not)
+
+**What `certification_type` means.** It records a GOVERNMENT-granted status and may only originate from one of the three certifying bodies. It is never scraped, never inferred, and — since July 2026 — never accepted from a submitter. **Blank is the CORRECT value for the large majority of the directory** (1,327 of 1,443 rows): it means "minority-owned by our own verification, holding no state certification." Absence of a certification is accurate data, not a gap to be filled. Most minority-owned businesses have no state certification and that is fine; they belong here on equal footing. Self-reported and scrape-verified ownership is welcome and is what `minority_type` is for.
+
+So Lane 2 has exactly one job: **catch businesses that appeared on a certifier's list since the last run.** Either a business already in the directory turns out to be certified (fill the field), or a certified business is missing from the directory entirely (a candidate to add). The second is the more valuable half — a certified business with no web presence is structurally invisible to Lane 1.
+
+### ✅ EXISTS — intake: `Minority_Biz_Database_Project/data_gather_.ipynb`
+
+This notebook is the Lane 2 cleaner. Do not rebuild it.
+
+| Cell | What it does |
+|---|---|
+| 2 | Converts the KY Finance `.xlsx` → CSV, renames to `KY_F&A_<Month>_<Year>.csv`, **deletes the source .xlsx** |
+| 4 | Renames the two `Directory_<date>_<random>.csv` exports → `Louisville_HRC_<Month>_<Year>.csv` and `KY_Trans_Cab_<Month>_<Year>.csv` |
+| 6–7 | Loads all three with correct `encoding`/`skiprows` and lists their columns; dtale for eyeballing |
+
+Cell 7 already encodes the two file-format traps: `encoding='cp1252'` and `skiprows=5` for both B2GNow CSVs, `skiprows=3` for the xlsx. **Workflow:** drop the fresh downloads into the matching `Spreadsheets/` subfolder, then run cells 2 and 4. Note both cells stamp filenames from *today's* date, and cell 2 deletes the `.xlsx`, so keep an original elsewhere if you want one.
+
+### ❌ DOES NOT EXIST — the reconcile step
+
+Nothing matches these files against the live `businesses` table. That is still done by hand. The June 2026 HRC merge (277 records, 208 unique companies) was a manual pass, and it is the source of the 116 rows that currently carry a `certification_type`.
+
+**Why it has not been automated, and the constraint on any attempt:** most of the ~76 duplicate clusters `dedupe_live.py` later cleaned up came from this lane inserting businesses already present under differently formatted names. **77 rows had to be removed.** The failure mode here is not a wrong certification value — it is duplicate insertion. Any reconcile must bias hard toward matching an existing row; the insert path is the dangerous one.
+
+### The 2026-07-29 export baseline
+
+Compare future downloads against this. Measured, not assumed:
+
+| | KYTC | Louisville HRC | KY Finance |
+|---|---|---|---|
+| Rows / unique companies | 468 / **421** | 287 / **211** | 528 / 528 |
+| Certification types | SBE 421, DBE 46 | MBE 139, WBE 125, SDVOSB 7, VOSB 7, DIBE 6, LGBTBE 2 | WBE 245, MBE 156, MWBE 123 |
+| In Kentucky | **171 (37%)** | 209 (73%) | 408 (77%) |
+| `Ethnicity` column | ✗ | ✓ | ✗ |
+| Street address | ✓ | ✓ | ✗ (city/county only) |
+
+**Five traps in these files:**
+
+1. **KYTC is mostly not a minority list.** 421 of 468 rows are **SBE — Small Business Enterprise, which is size-based, not ownership-based.** Only the 46 **DBE** rows reflect disadvantaged ownership. Importing the file wholesale would add ~400 businesses with no minority-ownership basis.
+2. **HRC's `Ethnicity` includes 78 "Caucasian" rows** — WBE with no racial-minority component. `Ethnicity` maps to `minority_type` only conditionally: Caucasian + WBE → `Women-Owned` alone, never a racial tag.
+3. **One company spans multiple rows**, one per certification held (`1OAK` is both MBE and WBE). Cert types must be **unioned per company**. Splitting them is what produced the June 2026 duplicates.
+4. **Both CSVs are cp1252, not UTF-8.** They contain 0x96 en-dashes; a UTF-8 read raises `UnicodeDecodeError`.
+5. **ZIP values carry a leading TAB** (`"\t11365"`), a B2GNow quirk — almost certainly the origin of the `.0` ZIP artifacts in the Change Log, once a tab-prefixed string got coerced through a float.
+
+Also: the xlsx `Business Type` values (`Consultant`, `Supplier/Distributor`, `Trucking`, …, 12 in its `Legend` sheet) map to **none** of the 23 industries. That is where the `Construction`/`Supplier`/`Services` industry strays came from — do not write it to `industry` unmapped.
+
+### Usage restriction on the source files
+
+Both B2GNow CSVs carry this in their preamble: *"The information provided in this file is not to be used for unsolicited advertising, spam, or any other unauthorized use."* These are public-agency certification lists and this directory is neither advertising nor spam, but republishing is a redistribution. Flagged so the decision is deliberate — the same judgment that kept NMSDC/WBENC/NGLCC out (Section 14).
 
 ---
 
@@ -246,7 +342,7 @@ Static content page. Pulls live business count from `businesses` table on load (
 - Left panel: submission list. Right panel: submission detail view
 - Approve button behavior:
   - `submission_type = "new"` → POSTs to `/rest/v1/businesses`, then PATCHes submission to approved
-  - `submission_type = "update"` → Only PATCHes submission to approved; does NOT auto-apply changes. Manual edit in Supabase required.
+  - `submission_type = "update"` → looks the business up by exact name and PATCHes the submitted fields onto it, then marks the submission approved. Auto-applies since June 2026 (the "manual edit required" note here was stale). `certification_type` is deliberately excluded from that patch — see Section 6 and 6a.
 - Reject button: PATCHes submission to rejected only
 - No verify toggle, no stats tab (simpler than CandidateVoice admin)
 
@@ -301,8 +397,11 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 | `pipeline/enrich_submissions.py` | Targeted version of `enrich.py` for community submissions approved in admin.html. Reads the `submissions` table for `status = approved` / `submission_type = new` rows submitted after a stored watermark, matches each to its `businesses` row by exact `business_name`, and fills `industry`/`services_products` only where needed (reuses `enrich.py`'s classify/infer functions). Watermark lives in `data/.enrich_submissions_state.json` (gitignored) so re-runs only touch newly-approved rows. Rows with no exact name match are skipped and printed for manual follow-up. Flags: `--dry-run` (preview, does not advance watermark), `--since ISO_TIMESTAMP` (override watermark), `--limit N`. Also runnable via `python pipeline/ledger.py enrich-new`. Does not regenerate static pages — still run `generate-business-pages.js` after. | After each batch of admin.html approvals | ~$0.75-1.00/1000 (only for rows needing work) |
 | `pipeline/dedupe_live.py` | Merge duplicate rows in the live table. Groups by normalized name; survivor keeps the best address and the real business website (not a buyblack.org placeholder); same-name + same-phone rows merge even when addresses differ; genuine address conflicts go to a review CSV. `--selftest`, `--dry-run` (default), `--apply`. Needs the service-role key. | As needed | Free |
 | `pipeline/maintain.py` | Link-status check; `--buyblack` also resolves buyblack.org URLs | Monthly / as needed | Free / SerpApi |
-| `pipeline/reconcile_certifications.py` | Lane 2 certification merge (to build) | As agencies refresh | Free |
+| `pipeline/ledger.py` | Thin orchestrator: `prep` (prepare + resolve_review, stops for review), `publish` (upload + enrich industries + enrich services), `maintain` (dry-run health checks), `enrich-new` (= enrich_submissions.py) | Routine path | Varies |
+| `pipeline/resolve_review.py` | Auto-settles "Needs review" rows: finds the business's real site (even when the listed link is a listicle), reads the address, promotes KY / drops out-of-state. `--limit N`, `--dry-run`, `--no-serp` | After prepare.py | SerpApi (small) |
 | `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
+| `backup_supabase.py` (repo root) | Dumps `businesses` + `submissions` to `backups/<timestamp>/` as JSON. Paginates at 1000 (PostgREST truncates silently) and exits non-zero on a zero-row dump so a scheduled run cannot fail quietly. Reads URL + service-role key from admin.html so the key lives in one place. | Before any schema/RLS/grant change; daily via Task Scheduler | Free |
+| Lane 2 reconcile | **Does not exist.** Intake is `Minority_Biz_Database_Project/data_gather_.ipynb`; the match-against-live-table step is still manual. See Section 6a. | — | — |
 
 **Consolidation note:** `prepare.py` replaces the old `triage` + `clean_ky_businesses.py`; `enrich.py` replaces `categorize_industries.py` + `fill_missing_services.py`; `maintain.py` replaces `check_link_status.py` + `fix_buyblack_urls.py`.
 
@@ -441,7 +540,7 @@ node generate-business-pages.js
 - CTA linking back to `index.html?search=BusinessName` and to the full directory
 - Canonical URL and Open Graph meta tags for SEO
 
-**Sitemap:** `/businesses/sitemap.xml` lists every business page plus `index.html` and `about.html`. First submitted to Google Search Console June 24, 2026 (1,266 pages discovered, Status: Success). Regenerated June 2026 after dedupe and enrichment; the table and sitemap now hold 1,794 business pages.
+**Sitemap:** `/businesses/sitemap.xml` lists every business page plus `index.html` and `about.html`. First submitted to Google Search Console June 24, 2026 (1,266 pages discovered, Status: Success). Regenerated June 2026 after dedupe and enrichment. **Current count: 1,443** pages, matching the live table exactly (verified 2026-07-29). The 1,794 figure here was stale by a month -- the out-of-state purge had dropped it.
 Submit sitemap at: `https://search.google.com/search-console`
 Sitemap URL: `https://thepeoplesledger.net/businesses/sitemap.xml`
 
@@ -470,13 +569,25 @@ git push
 | Regenerate SEO pages | `node generate-business-pages.js` | After upload (quarterly) |
 | Refresh link statuses | `python pipeline/maintain.py` | Monthly |
 | Fix buyblack URLs | `python pipeline/maintain.py --buyblack` | As needed |
-| Reconcile certification lists | `python pipeline/reconcile_certifications.py` (to build) | As agencies refresh |
+| Back up the database | `python backup_supabase.py` | Daily (scheduled) + before any schema/RLS/grant change |
+| Reconcile certification lists | **Manual.** Intake: drop downloads into `Minority_Biz_Database_Project/Spreadsheets/<certifier>/`, run notebook cells 2 and 4. The match-against-live-table step is not automated — see Section 6a | As agencies refresh |
 
 ---
 
 ## 14. Known Limitations
 
 - `minority_type` and `certification_type` are comma-separated strings, not normalized. Future refactor would use junction tables.
+- **Five `minority_type` values are not filterable** (measured 2026-07-29). index.html offers exactly nine `data-type` pills; these values exist in the data and match none of them, so those businesses cannot be reached by the ownership filter:
+
+  | rows | value | disposition |
+  |---|---|---|
+  | 283 | `Minority-Owned (general)` | either add a pill or re-classify — this is 20% of the directory |
+  | 17 | `Minority-Owned` | inconsistent spelling of the above; fold together |
+  | 1 | `Family-Owned` | not an ownership category. Legacy orphan — no code path produces it (the scraper has no `family` detection and the form has no such checkbox), so it predates the current form or was hand-entered |
+  | 1 | `Service-Disabled Veteran-Owned` | fold into `Veteran-Owned, Disability-Owned` |
+  | 1 | `Disabled Veteran-Owned` | same |
+
+  **The rule when adding a scraper search term: tag it with one of the nine existing pill values.** A new `minority_type` string without a matching pill in index.html produces unfilterable rows, which is how the 283 got there.
 - Ownership detection in `scrape.py` works by source: Google Maps results are kept only when Google's own self-identified ownership attribute is present and are tagged from that attribute; organic and social results are tagged from ownership language in the page text. Badges and images are not read. This is the fix for the early bug where chains and same-name businesses were mislabeled from the search query.
 - The national certification directories (NMSDC, WBENC, NGLCC) are membership-gated paid databases aimed at B2B procurement, not a consumer directory, and scraping them is ToS-risky. Selenium was evaluated and deliberately not added. Free JS-rendered directories are instead handled by finding their JSON endpoint and adding it to `DIRECTORY_API_ENDPOINTS`.
 - This is not a substitute for certified MBE data for procurement compliance.
@@ -538,7 +649,7 @@ The version on GitHub is the source of truth. If your local copy and the repo di
 - [ ] Does the change affect the admin approval flow? Remember that update submissions require manual DB edits
 - [ ] Is admin.html being pushed to GitHub? (It should never be — it's gitignored)
 - [ ] Is `.env` being pushed to GitHub? (It should never be — it's gitignored)
-- [ ] Does a Python script need to be updated? Test with a small batch before running on the full ~1,794 records
+- [ ] Does a Python script need to be updated? Test with a small batch before running on the full ~1,443 records
 
 ---
 
@@ -607,6 +718,25 @@ SerpApi calls distinguish a real failure from a genuine empty result. A quota-ex
 ---
 
 ## 20. Change Log
+
+### July 2026 — Security hardening, backups, and a documentation failure
+
+**Security (all applied and verified).** Four items, covered in detail in Sections 3 and 11: the admin.html XSS that could exfiltrate the service-role key from the pending queue; `anon` holding full write access to both tables; the pipeline scripts silently using the publishable key; and submitters being able to self-assert a state certification. See Section 11 for the grants/policies story and Section 6a for the certification one.
+
+**Backups (new).** `backup_supabase.py` plus `backup_to_external.py` in the Candidate Voice repo, which mirrors **both** repos to `D:\Website_Backups\repos\` including gitignored files. Three Windows scheduled tasks: two DB backups at 9:00 AM, external-drive copy at 9:30 AM, all `StartWhenAvailable`. Before this there were no backups at all and the free tier provides none.
+
+**Scraper expansion (uncommitted as of this writing).** `QUERY_TYPES` 15 → 32 and `STATEWIDE_CITIES` 22 → 34. The new terms target specific communities the generic ones under-surface (`korean owned business`, `nigerian owned business`, `trans owned business`, …); Northern Kentucky was added because it is the most diverse part of the state outside Louisville/Lexington and only Covington and Florence were represented. **Every new term maps to one of the nine existing filter pills** — no new taxonomy. Search space 690 → 2,240, so ~1,550 new searches; `MAX_SEARCHES_PER_RUN = 1500` means two runs. A partial run on the old config spent 417 searches and was stopped; `data/*.PRE-REFRESH-*` holds the pre-run progress and CSV.
+
+**The documentation failure — read this before building anything.** A session read this entire document, then built a Lane 2 intake cleaner that already existed as `Minority_Biz_Database_Project/data_gather_.ipynb`, including re-deriving the cp1252 encoding and the preamble `skiprows` that cell 7 had already solved. Two causes:
+
+1. The Section 3 file tree omitted that folder entirely, and the session treated the tree as the repo inventory.
+2. The session searched `grep -r ... pipeline/` — one directory — instead of `grep -r ... .`.
+
+Cause 2 is the real one. **A document describes intent and history; only the filesystem describes what exists.** This is the same lesson the July security work produced three separate times — "gitignored so the key is safe," "the policy is scoped to approved rows," "a read-only publishable key" — every one of them a documented model that did not match reality. Reading a doc is not looking.
+
+**Rule going forward: run `git ls-files` and `ls -R` before proposing to build anything.** And when you add a file or folder to this repo, add it to the Section 3 tree in the same commit — a session will not go looking for what the tree does not list.
+
+
 
 ### June 2026 — Search rebuild, live dedupe, categorization cleanup
 

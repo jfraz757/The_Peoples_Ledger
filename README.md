@@ -25,7 +25,7 @@ If the work is too political, it is because it is too honest.
 
 A full-stack directory of underrepresented businesses in Kentucky: a live, searchable, public-facing database built on open-source tooling and community data. It is designed to operate independently of government certification systems, which were never built to serve everyday consumers in the first place.
 
-The directory currently contains roughly 1,264 verified, deduplicated business records spanning 23 industry categories and 10 ownership types. It is live, searchable, and exportable by anyone.
+The directory currently contains **1,443** verified, deduplicated business records spanning 23 industry categories and 10 ownership types (count verified against the live table 2026-07-29). It is live, searchable, and exportable by anyone.
 
 ---
 
@@ -40,7 +40,8 @@ Lane 1: Web discovery (quarterly)
   scrape.py  ->  prepare.py  ->  [human review]  ->  upload  ->  enrich  ->  maintain  ->  SEO pages
 
 Lane 2: Certification spreadsheets (as agencies refresh)
-  manual download  ->  reconcile_certifications.py  ->  businesses table
+  manual download  ->  data_gather_.ipynb (convert/rename)  ->  [MANUAL merge]  ->  businesses table
+  NOTE: the reconcile step is NOT automated. Intake only.
 ```
 
 The live website reads from Supabase at runtime. It is a static site with no build step, so none of the Python tooling or working data is part of what gets deployed.
@@ -182,7 +183,7 @@ Open `admin.html` locally. It is gitignored and never pushed to GitHub.
 | Regenerate SEO pages | `node generate-business-pages.js` | After upload (quarterly) |
 | Refresh link statuses | `python pipeline/maintain.py` | Monthly |
 | Fix buyblack URLs | `python pipeline/maintain.py --buyblack` | As needed |
-| Reconcile certification lists | `python pipeline/reconcile_certifications.py` | As agencies refresh |
+| Reconcile certification lists | Manual. Intake via `Minority_Biz_Database_Project/data_gather_.ipynb` (cells 2 and 4); the match-against-live-table step is not automated | As agencies refresh |
 
 ---
 

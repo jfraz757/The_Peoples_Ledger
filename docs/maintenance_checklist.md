@@ -11,7 +11,7 @@
 ## Monthly (run every month)
 
 ```bash
-bash monthly_link_check.sh
+bash docs/monthly_link_check.sh
 ```
 
 | Script | What it does | Cost |
@@ -37,7 +37,7 @@ bash monthly_link_check.sh
 Then run:
 
 ```bash
-bash quarterly_refresh.sh
+bash docs/quarterly_refresh.sh
 ```
 
 ### Pipeline order (the script runs these in sequence)
