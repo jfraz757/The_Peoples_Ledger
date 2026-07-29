@@ -372,7 +372,18 @@ Grants alone do not tell you this — the policy has to permit it too. Captured 
 
 A probe using `?id=eq.-1` to test DELETE returned `204` and was initially misread as "permitted". It is not a valid test: a filter matching zero rows affects zero rows, so nothing violates the policy and the request succeeds regardless. **For UPDATE and DELETE, a zero-row filter proves the grant exists, not that the policy allows it.** To test a policy you need a filter that matches a real row, or read `pg_policy` directly. Reading `submissions` was a valid test only because it returned actual rows.
 
-Four genuine holes, all closed by `restrict_anon_grants.sql`. Drop the policies too with `drop_permissive_policies.sql` — they are unreachable now, but re-granting any privilege later would silently reopen everything.
+Four genuine holes. **Both fixes applied and verified 2026-07-29:** `restrict_anon_grants.sql` (grants) and `drop_permissive_policies.sql` (policies).
+
+End state — correct at both gates independently, so neither is load-bearing alone:
+
+| gate | `businesses` | `submissions` |
+|---|---|---|
+| GRANT | `SELECT` only | `INSERT` only |
+| POLICY | "Allow public select" (`r`) | "Allow public insert on submissions" (`a`) |
+
+That pairing is the point: with no permissive policy left, accidentally re-granting a privilege cannot reopen anything on its own — and vice versa. Post-fix live checks: directory `SELECT` 200, `search_businesses` returns `total_count=1443`, `suggest_search` returns results, `submissions` INSERT permission intact.
+
+Note `relforcerowsecurity = false` on both tables. That is expected and harmless — it only governs whether RLS applies to the table *owner* (`postgres`), and the service role bypasses RLS regardless.
 
 ### Why the public write access existed — pipeline scripts and the duplicate SUPABASE_KEY
 

@@ -1,5 +1,11 @@
 -- Drop the over-permissive RLS policies on `businesses` and `submissions`.
 --
+-- STATUS: APPLIED 2026-07-29. Verified -- pg_policy now returns exactly two rows
+-- ("Allow public select" on businesses, "Allow public insert on submissions"), and the
+-- live site still works: directory SELECT 200, search_businesses total_count=1443,
+-- suggest_search returning results, submissions INSERT permission intact.
+-- Kept for the record and for rebuilding the reasoning; re-running it is a no-op.
+--
 -- Run this AFTER restrict_anon_grants.sql. That file revoked the grants, which is what
 -- actually blocks access today (a request must pass BOTH the grant and the policy). These
 -- policies are now unreachable -- but they are a trap: re-granting any privilege later,
