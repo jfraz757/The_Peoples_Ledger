@@ -70,6 +70,32 @@ AGGREGATOR_DOMAINS = {
 }
 SERP_SKIP = AGGREGATOR_DOMAINS | {"bing.com", "duckduckgo.com", "youtube.com"}
 
+# The aggregator that surfaced a business usually tells you WHERE it is. A city
+# chamber, a local news site, or a municipal domain only covers its own area, so the
+# domain is a free location hint for a row that has no address at all.
+#
+# This matters because find_real_site() searches '"{name}" official website', which is
+# useless for a short generic name: '"Olla" official website' returns nothing usable.
+# Add the city and the service and it resolves immediately -- Olla is a taqueria in
+# Covington. Extend this map as new aggregators appear in the review pile.
+DOMAIN_CITY_HINT = {
+    "thecovky.gov":                "Covington",
+    "somersetpulaskichamber.com":  "Somerset",
+    "owensborotimes.com":          "Owensboro",
+    "do502.com":                   "Louisville",   # 502 is the Louisville area code
+    "nkytribune.com":              "Northern Kentucky",
+    "louisville.coffee":           "Louisville",
+    "linknky.com":                 "Northern Kentucky",
+    "wdrb.com":                    "Louisville",
+    "spectrumnews1.com":           "",             # statewide, no usable city
+    "kyforky.com":                 "",             # statewide
+}
+
+
+def city_hint(url):
+    """City implied by the aggregator that surfaced this business, or ''."""
+    return DOMAIN_CITY_HINT.get(domain_of(url), "")
+
 
 def load_env():
     env_path = os.path.join(REPO_ROOT, ".env")
@@ -116,12 +142,83 @@ def name_domain_mismatch(name, url):
     return not any(t in host or host in t for t in toks)
 
 
-def find_real_site(name):
+def find_business_facts(name, service="", city=""):
+    """Pull address / phone / website straight out of the search response.
+
+    SerpApi returns a `knowledge_graph` (and sometimes `local_results`) for a business
+    query, already parsed into fields:
+
+        address   621 Main St, Covington, KY 41011
+        phone     (859) 360-6051
+        website   http://www.mamasonmain.com/
+
+    resolve_review previously read only `organic_results`, picked a link, fetched that
+    page, and tried to parse an address out of the HTML. For "Mama's on Main" that path
+    picked an OpenTable booking page, found nothing scrapeable, and left the row in the
+    review pile -- while the address sat unread in the same response.
+
+    Returns {} when the search has no structured business result, in which case the
+    caller falls back to the fetch-and-parse path, which still handles businesses that
+    Google has no knowledge panel for.
+    """
+    if not SERPAPI_KEY:
+        return {}
+    parts = [f'"{name}"']
+    if service:
+        parts.append(" ".join(str(service).split()[:4]))
+    if city:
+        parts.append(city)
+    parts.append("Kentucky")
+    try:
+        data = requests.get("https://serpapi.com/search",
+                            params={"q": " ".join(parts), "api_key": SERPAPI_KEY,
+                                    "num": 8, "gl": "us", "hl": "en"},
+                            timeout=15).json()
+    except Exception as e:
+        print(f"    SerpApi error: {e}")
+        return {}
+
+    kg = data.get("knowledge_graph") or {}
+    if not kg:
+        loc = data.get("local_results") or {}
+        places = loc.get("places") if isinstance(loc, dict) else loc
+        if places:
+            kg = places[0]
+
+    out = {}
+    for src, dst in (("address", "address"), ("phone", "phone"), ("website", "website")):
+        val = str(kg.get(src) or "").strip()
+        if val:
+            out[dst] = val
+    # Keep the organic results so the caller can still fall back without re-searching.
+    out["_organic"] = data.get("organic_results", [])
+    return out
+
+
+def find_real_site(name, service="", city=""):
     """Find the business's real website via SerpApi. Returns a URL or None.
-    Skips aggregators, social, and search engines in the results."""
+    Skips aggregators, social, and search engines in the results.
+
+    July 2026: the query now includes the service and a city hint when available.
+    It used to be '"{name}" official website' alone, which fails on short or generic
+    names -- '"Olla" official website' finds nothing, while '"Olla" Restaurant
+    Covington Kentucky' finds the taqueria on the first result. 28 of the 51 rows in
+    the July review pile had a city recoverable from the aggregator domain, and every
+    one of those rows had no address at all, so this context was the only signal
+    available.
+    """
     if not SERPAPI_KEY:
         return None
-    params = {"q": f'"{name}" official website', "api_key": SERPAPI_KEY,
+    parts = [f'"{name}"']
+    if service:
+        # First few words only: these descriptions can run to a full sentence, and a
+        # long quoted phrase narrows the search to nothing.
+        parts.append(" ".join(str(service).split()[:4]))
+    if city:
+        parts.append(city)
+    parts.append("Kentucky")
+    q = " ".join(parts)
+    params = {"q": q, "api_key": SERPAPI_KEY,
               "num": 8, "gl": "us", "hl": "en"}
     try:
         data = requests.get("https://serpapi.com/search", params=params, timeout=12).json()
@@ -308,12 +405,56 @@ def main():
         # If the listed site is an aggregator/listicle/social, blank, or its
         # domain does not match the name, find the business's REAL site first.
         real_site = ""
+        service = str(df.at[i, "Services / Products"]).strip()
+        city = city_hint(site)
+
         if (not args.no_serp) and (not site or is_aggregator(site) or name_domain_mismatch(name, site)):
-            found = find_real_site(name)
-            if found:
-                real_site = found
+            # Ask the search engine what it already knows about this business before
+            # trying to fetch and parse anything. One search, and the response usually
+            # carries a structured address, phone and real website.
+            facts = find_business_facts(name, service, city)
+            kg_addr = facts.get("address", "")
+            # Reuse the same classifier the page-scraping path uses, so a search-derived
+            # address is judged by exactly the same rules as a scraped one.
+            state_kg = address_from_text(kg_addr)[0] if kg_addr else None
+
+            if state_kg == "ky":
+                df.at[i, "Disposition"]    = "Good to go"
+                df.at[i, "Kentucky Based"] = "Yes"
+                df.at[i, "Address"] = kg_addr
+                if facts.get("website"):
+                    df.at[i, "Website"] = facts["website"]
+                if facts.get("phone") and not str(df.at[i, "Phone"]).strip():
+                    df.at[i, "Phone"] = facts["phone"]
+                df.at[i, "Reason"] = "KY address from search result"
+                promoted += 1
                 looked_up += 1
-                print(f"  [{n}/{len(idxs)}] {name[:38]:<38} real site -> {found}")
+                print(f"  [{n}/{len(idxs)}] {name[:38]:<38} -> Good to go [search] ({kg_addr})")
+                time.sleep(SLEEP)
+                continue
+            if state_kg == "oos":
+                if facts.get("website"):
+                    df.at[i, "Website"] = facts["website"]
+                df.at[i, "Disposition"] = "Dropped"
+                df.at[i, "Reason"] = "out-of-state (from search result)"
+                dropped += 1
+                print(f"  [{n}/{len(idxs)}] {name[:38]:<38} -> Dropped [search] ({kg_addr})")
+                time.sleep(SLEEP)
+                continue
+
+            # No usable structured address. Fall back to the original path: pick a real
+            # website out of the organic results and scrape it. Reuse the results we
+            # already paid for rather than searching again.
+            for r in facts.get("_organic", []):
+                link = r.get("link", "")
+                if link.startswith("http") and not is_aggregator(link) \
+                        and not any(s in link for s in SERP_SKIP):
+                    real_site = link
+                    break
+            if real_site:
+                looked_up += 1
+                ctx = f" [{city}]" if city else ""
+                print(f"  [{n}/{len(idxs)}] {name[:38]:<38} real site -> {real_site}{ctx}")
         resolve_site = real_site or site
 
         if not resolve_site:

@@ -32,16 +32,26 @@ NOTE: prepare.py rebuilds businesses_prepared.csv from OUTPUT_COLUMNS and will d
 """
 
 import argparse
+import json
 import os
 import re
 import sys
+import urllib.request
 from collections import Counter
 
 import pandas as pd
+from rapidfuzz import fuzz, process
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(PIPELINE_DIR)
 PREP_FILE = os.path.join(REPO_ROOT, "data", "businesses_prepared.csv")
+
+# Needed for the live-duplicate check. Read-only: this script never writes to Supabase.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(REPO_ROOT, ".env"))
+except ImportError:
+    pass
 
 sys.path.insert(0, PIPELINE_DIR)
 from prepare import addr_state  # noqa: E402  (shared resolver -- see prepare.addr_state)
@@ -62,11 +72,57 @@ def norm(s):
     return re.sub(r"[^a-z0-9 ]", " ", str(s or "").lower()).strip()
 
 
-def flag_row(row, name_counts):
+def fetch_live_names():
+    """Live business names, or None if the directory cannot be read.
+
+    prepare.py's skip-known already drops EXACT matches. This catches the near
+    misses it cannot, which are the ones that waste review time: the live row is
+    "Blak Koffee" and the scrape found "Blak Coffee" -- one letter, 91% similar,
+    and the scraped website was a do502.com listicle rather than blakkoffee.com,
+    so neither the name key nor the site key matched.
+
+    These are FLAGGED, never dropped, and the reason is in the data: at a cutoff
+    low enough to catch Blak (91), you also catch "Hancock County Department of
+    Veterans" vs "Henderson County Department of Veterans" at 89 -- different
+    counties, genuinely different organizations. No threshold separates them, so
+    a human has to look.
+    """
+    url = os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_KEY", "")
+    if not url or not key:
+        return None
+    names, offset = [], 0
+    try:
+        while True:
+            req = urllib.request.Request(
+                f"{url}/rest/v1/businesses?select=business_name&order=id.asc"
+                f"&limit=1000&offset={offset}",
+                headers={"apikey": key, "Authorization": f"Bearer {key}"})
+            page = json.loads(urllib.request.urlopen(req, timeout=30).read())
+            names += [b["business_name"] for b in page if b.get("business_name")]
+            if len(page) < 1000:
+                break
+            offset += 1000
+    except Exception as e:
+        print(f"  [live-duplicate check off: {e}]")
+        return None
+    return names
+
+
+def flag_row(row, name_counts, live_keys=None, live_choices=None):
     """Return a list of reasons this row deserves a second look. Empty = looks fine."""
     flags = []
     name = str(row.get("Business Name") or "")
     addr = str(row.get("Address") or "").strip()
+
+    # Near-duplicate of something already live. 88 is deliberately below the 93 that
+    # prepare.py's own analysis used, because Blak Coffee/Koffee sits at 91 -- the
+    # cost of a false flag is a glance, the cost of a miss is a duplicate published.
+    if live_choices:
+        m = process.extractOne(norm(name), live_choices,
+                               scorer=fuzz.token_sort_ratio, score_cutoff=88)
+        if m and norm(name) != m[0]:
+            flags.append(f"ALREADY LIVE? ~ '{live_keys[m[0]]}' ({m[1]:.0f}%)")
 
     hit = next((b for b in NATIONAL_BRANDS if b in norm(name)), None)
     if hit:
@@ -104,10 +160,19 @@ def main(report_only=False):
     # whether the surviving row is a chain.
     name_counts = Counter(norm(n) for n in good["Business Name"])
 
+    live = fetch_live_names()
+    live_keys = {norm(n): n for n in live} if live else None
+    live_choices = list(live_keys.keys()) if live_keys else None
+    if live_choices:
+        print(f"Live directory loaded: {len(live_choices)} names for duplicate check.")
+
+    # "Needs review" rows are flagged too. That is where Blak Coffee sat -- an
+    # already-live business in the manual pile, which is exactly the review time
+    # this script exists to save.
     flags = []
     for _, row in df.iterrows():
-        flags.append("; ".join(flag_row(row, name_counts))
-                     if row["Disposition"] == "Good to go" else "")
+        flags.append("; ".join(flag_row(row, name_counts, live_keys, live_choices))
+                     if row["Disposition"] in ("Good to go", "Needs review") else "")
     df["Review Flag"] = flags
 
     flagged = df[df["Review Flag"] != ""]
@@ -127,7 +192,7 @@ def main(report_only=False):
     # filter only because their address could not be resolved at all, not because they
     # looked like Kentucky. They are the likeliest bad publishes in the whole set.
     priority = flagged[flagged["Review Flag"].str.contains(
-        "national brand|OUT OF STATE|no Kentucky signal", na=False)]
+        "national brand|OUT OF STATE|no Kentucky signal|ALREADY LIVE", na=False)]
     if len(priority):
         print(f"\nHighest priority ({len(priority)}):")
         for _, r in priority.iterrows():
