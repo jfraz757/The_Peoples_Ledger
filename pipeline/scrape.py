@@ -25,9 +25,11 @@ WHAT CHANGED FROM v1 (diff against ky_minority_business_scraper.py):
 
 NEW IN THIS REVISION:
   A.  STATEWIDE. STATEWIDE_CITIES spans every region of Kentucky.
-  B.  INSTAGRAM / FACEBOOK. Those domains are no longer skipped. Pages are read
-      via their og: meta tags (which survive even a partial fetch), and optional
-      site: searches (INCLUDE_SOCIAL_SEARCHES) surface business profiles directly.
+  B.  INSTAGRAM / FACEBOOK. SUPERSEDED July 2026 -- both are now in SKIP_DOMAINS and
+      INCLUDE_SOCIAL_SEARCHES is False. The og: meta tag approach described here was
+      valid when written but Meta now returns HTTP 400 with no og: tags to
+      unauthenticated fetches. Measured 0 businesses from a 300-URL random sample.
+      See the note in SKIP_DOMAINS before re-enabling.
   C.  PHASE-LEVEL RESUME. A progress file records exactly which Maps searches,
       directory harvests, organic searches, and URL scans have completed. If any
       phase fails, fix it and re-run: the script skips finished work (including
@@ -53,7 +55,7 @@ OUTPUT (renamed so you can compare against the v1 output):
   ky_minority_businesses_v2.csv             main result, same 6-column schema as v1
   ky_minority_businesses_v2_sources.csv     audit-only log of where each row came from
   checkpoint_ky_minority_businesses_v2.csv  rolling save
-  scraper_progress_v2.json                  phase/step resume state
+  scraper_progress.json                     phase/step resume state
   cache_v2/                                 cached HTML + extractions
 
 SETUP:
@@ -66,7 +68,7 @@ SETUP:
 
 GITIGNORE additions (see the companion markdown file):
     cache_v2/
-    scraper_progress_v2.json
+    scraper_progress.json
     ky_minority_businesses_v2.csv
     checkpoint_ky_minority_businesses_v2.csv
     ky_minority_businesses_v2_sources.csv
@@ -77,6 +79,7 @@ repeats a completed search, so you only pay for searches once.
 """
 
 import os
+import sys
 import json
 import time
 import random
@@ -160,6 +163,20 @@ STATEWIDE_CITIES = [
     "Hopkinsville", "Frankfort", "Paducah", "Henderson", "Ashland",
     "Murray", "Somerset", "Madisonville", "London", "Pikeville",
     "Danville", "Winchester",
+
+    # --- Added July 2026 -----------------------------------------------------
+    # Northern Kentucky first: it is part of the Cincinnati metro, is the most
+    # ethnically diverse part of the state outside Louisville/Lexington, and had only
+    # Covington and Florence represented. Then regional hubs that anchor their own
+    # local economies rather than feeding a bigger metro.
+    #
+    # Deliberately NOT added: Louisville and Lexington suburbs (St. Matthews,
+    # Jeffersontown, Shively, Nicholasville-adjacent). Maps searches for the parent
+    # city already cover that metro, so those would re-find known businesses and
+    # spend searches for rows skip-known then discards.
+    "Newport", "Erlanger", "Independence", "Fort Thomas",
+    "Shelbyville", "Berea", "Glasgow", "Bardstown",
+    "Campbellsville", "Radcliff", "Maysville", "Corbin",
 ]
 MAPS_CITIES    = STATEWIDE_CITIES
 ORGANIC_CITIES = STATEWIDE_CITIES
@@ -170,7 +187,12 @@ ORGANIC_CITIES = STATEWIDE_CITIES
 #  businesses live only on social. We read their og: meta tags and, optionally,
 #  search the platforms directly with the site: operator.
 # ---------------------------------------------
-INCLUDE_SOCIAL_SEARCHES = True
+# Turned OFF July 2026. These site: searches still WORK -- they return Instagram and
+# Facebook URLs perfectly well -- but those URLs can no longer be fetched: Meta returns
+# HTTP 400 with no og: tags, measured at a 0/300 hit rate (see SKIP_DOMAINS). So the
+# searches spend SerpApi (64 per full run at the current term count) to produce a queue
+# that is now skipped in its entirety. Re-measure a fetch before turning this back on.
+INCLUDE_SOCIAL_SEARCHES = False
 SOCIAL_SEARCH_SITES     = ["instagram.com", "facebook.com"]
 SOCIAL_DOMAINS          = ["instagram.com", "facebook.com"]
 
@@ -227,6 +249,33 @@ QUERY_TYPES = [
     ("disability owned business",       "Disability-Owned"),
     ("muslim owned business",           "Muslim-Owned"),
     ("minority owned business",         "Minority-Owned (general)"),
+
+    # --- Community-specific terms (added July 2026) ---------------------------
+    # The generic terms above under-surface specific communities: someone whose
+    # business is described online as "Korean-owned" or "Nigerian-owned" often does
+    # not also appear under "asian owned business" / "black owned business".
+    #
+    # Every tag here reuses one of the NINE ownership types the site's filter in
+    # index.html actually offers (data-type attributes). Do NOT introduce a new
+    # minority_type string without adding a matching pill to index.html -- there are
+    # already 283 rows tagged "Minority-Owned (general)" that no filter can reach.
+    ("korean owned business",           "Asian-Owned"),
+    ("vietnamese owned business",       "Asian-Owned"),
+    ("chinese owned business",          "Asian-Owned"),
+    ("indian owned business",           "Asian-Owned"),
+    ("filipino owned business",         "Asian-Owned"),
+    ("mexican owned business",          "Latine-Owned"),
+    ("cuban owned business",            "Latine-Owned"),
+    ("puerto rican owned business",     "Latine-Owned"),
+    ("african owned business",          "Black-Owned"),
+    ("nigerian owned business",         "Black-Owned"),
+    ("ethiopian owned business",        "Black-Owned"),
+    ("somali owned business",           "Black-Owned"),
+    ("gay owned business",              "LGBTQ+-Owned"),
+    ("lesbian owned business",          "LGBTQ+-Owned, Women-Owned"),
+    ("trans owned business",            "LGBTQ+-Owned"),
+    ("deaf owned business",             "Disability-Owned"),
+    ("disabled veteran owned business", "Veteran-Owned, Disability-Owned"),
 ]
 
 # Known directory pages to harvest links from (HTML, scrapeable with requests)
@@ -280,7 +329,56 @@ SKIP_DOMAINS = [
     "worldatlas.com", "worldometers.info", "gettyimages.com", "dokumen.pub",
     "archive.org", "congress.gov", "govinfo.gov", "un.org", "who.int",
     "bbc.com", "jstor.com",
+
+    # Added July 2026 after inspecting a 4,077-URL scan queue from the broadened
+    # QUERY_TYPES. Each of these was pulling URLs that cost a fetch and a Haiku
+    # extraction and could never yield a Kentucky business. Grouped by why.
+    #
+    # Aggregator/listing sites -- same class as the yelp/yellowpages/manta entries
+    # above. A listing page is not the business's own site.
+    "theknot.com", "mapquest.com", "findhelp.org",
+    # Social/video platforms -- same class as pinterest/tiktok above. Note
+    # facebook.com and instagram.com are deliberately NOT here; see the note below.
+    "youtube.com", "threads.com", "lemon8-app.com",
+    # Job boards -- same class as indeed/glassdoor/ziprecruiter above.
+    "lensa.com",
+    # Government data and reference -- same class as congress.gov/govinfo.gov above.
+    "usaspending.gov", "census.gov", "merriam-webster.com", "codelibrary.amlegal.com",
+    # Document hosts -- same class as dokumen.pub above.
+    "scribd.com",
+
+    # Facebook and Instagram -- added July 2026 after MEASURING them, having previously
+    # been kept on purpose. The old rationale was that social pages are readable through
+    # their og: meta tags, which carry the business name and bio even on a partial fetch.
+    # That was true when written and is no longer true.
+    #
+    # A 300-URL random sample (160 facebook, 140 instagram) drawn from a real scan queue
+    # produced ZERO businesses. 0.0%, not a low rate -- nothing at all. Direct fetches
+    # return HTTP 400 with a ~1,542-byte stub containing no og: tags whatsoever. This is
+    # not a login wall served to scrapers; the request is rejected outright.
+    #
+    # A second problem is visible in the URLs themselves: most are posts inside community
+    # groups (facebook.com/groups/<id>/posts/<id>), not business profiles. Even with a
+    # working fetch, a group post mentioning a business is not a business page.
+    #
+    # These were 2,171 of 3,810 URLs (57%) in the July 2026 queue. Skipping them costs
+    # nothing and removes well over half the scan work from every future run.
+    #
+    # If Meta ever restores unauthenticated og: access, re-measure before re-enabling --
+    # do not just delete these two lines because the old comment sounded reasonable.
+    "facebook.com", "instagram.com",
 ]
+
+# Deliberately NOT skipped, recorded so nobody "cleans them up" later:
+#   lul.org, theaachamber.com     -- these are in DIRECTORY_URLS; they are discovery
+#       SOURCES, and their harvested links are the point.
+#   buyblack.org                  -- listing pages for real businesses. The placeholder
+#       URL problem they create is already handled by `maintain.py --buyblack`.
+#   local news (linknky, wdrb, spectrumnews1, bizjournals) -- per the note above, a
+#       local profile occasionally names a real business.
+#   veteranownedbusiness.com      -- an aggregator, but of exactly the population this
+#       project wants, like navoba.com which IS in DIRECTORY_URLS. Better treated as a
+#       candidate directory source than as junk. Not yet added there.
 
 # File types that are not HTML pages. Skipped before fetching so the parser
 # never sees PDF or binary bytes (which previously crashed the whole run).
@@ -1187,6 +1285,36 @@ def build_database():
     unique_urls = p["url_list"]
     url_type_hint = p["url_type_hint"]
 
+    # --- Optional stop: collect URLs but do not scan them ---------------------
+    # Phase 4 is the expensive half. It is not capped by MAX_SEARCHES_PER_RUN (that
+    # governs SerpApi searches only), it fetches every queued page, and it pays Haiku
+    # for an extraction on each one. Broadening QUERY_TYPES in July 2026 grew this queue
+    # 3.4x, to 6,447 URLs, of which ~46% were facebook/instagram/tiktok plus wikipedia,
+    # yelp and theknot -- hosts that either block logged-out fetches or are not business
+    # sites at all, so most of that spend would buy nothing.
+    #
+    # --collect-only stops here with url_list saved and urls_collected already True, so
+    # you can prune the queue and then re-run normally: Phase 3 is skipped and Phase 4
+    # scans whatever survived the prune.
+    if "--collect-only" in sys.argv:
+        from collections import Counter
+        from urllib.parse import urlparse
+        hosts = Counter()
+        for u in unique_urls:
+            try:
+                hosts[urlparse(u).netloc.lower().removeprefix("www.")] += 1
+            except Exception:
+                pass
+        print(f"\n=== Stopping after URL collection (--collect-only) ===")
+        print(f"  URLs queued : {len(unique_urls)}")
+        print(f"  distinct hosts: {len(hosts)}")
+        print(f"  top hosts:")
+        for h, n in hosts.most_common(12):
+            print(f"    {n:>5}  {h}")
+        print(f"\n  Queue saved to data/scraper_progress.json -> url_list.")
+        print(f"  Prune it, then re-run without --collect-only to scan the survivors.")
+        return
+
     # --- Phase 4: Scan each URL ----------------------------------------------
     print(f"\n=== Phase 4: Scanning {len(unique_urls)} unique URLs ===\n")
     for i, url in enumerate(unique_urls, 1):
@@ -1232,7 +1360,7 @@ def build_database():
             print(f"Skipped {skipped_known} URLs already in the directory "
                   f"(no fetch, no extraction spent on them).")
         print(f"Source audit log written to {SOURCES_LOG_FILE}")
-        print("Delete scraper_progress_v2.json to force a full fresh run next time.")
+        print("Delete data/scraper_progress.json to force a full fresh run next time.")
     else:
         print("\nNo businesses found. Check your API keys in the .env file.")
 

@@ -26,7 +26,15 @@ Usage:
 
 import os
 import re
+import sys
 import pandas as pd
+
+# One address resolver, shared with purge_out_of_state.py, so the pre-upload filter
+# and the post-upload purge can never disagree about what counts as out-of-state.
+# Both live in pipeline/; add that directory to sys.path so this works whether the
+# script is run from the repo root or from pipeline/.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from purge_out_of_state import detect_state  # noqa: E402
 
 # Fuzzy name matching for the pre-review dedup. rapidfuzz is installed globally
 # (dedupe_live.py uses it); fall back to difflib if it is ever missing.
@@ -72,7 +80,14 @@ DENYLIST_FILE = os.path.join(DATA_DIR, "denylist.csv")
 
 # Reasons that are auto-assigned by rules every run (so they need not be recorded
 # in the denylist; only genuine manual rejections are captured by --commit-drops).
-AUTO_DROP_REASONS = {"out-of-state address", "chain/franchise", "already in directory"}
+AUTO_DROP_REASONS = {"out-of-state address", "chain/franchise", "already in directory",
+                     # "denylisted" belongs here too: those rows were dropped BY the
+                     # denylist, so re-recording them as fresh human decisions is
+                     # circular. It was harmless (the key dedup stopped real growth)
+                     # but it reported "Recorded 31 manual drop(s)" when 2 were new,
+                     # and it let website variants of an already-rejected business
+                     # accumulate as extra denylist rows. Added July 2026.
+                     "denylisted"}
 
 OUTPUT_COLUMNS = [
     "Business Name", "Address", "Phone", "Services / Products",
@@ -104,14 +119,66 @@ US_STATES = ("al","ak","az","ar","ca","co","ct","de","fl","ga","hi","id","il",
 
 # ── classification helpers ────────────────────────────────────────────────────
 def addr_state(addr):
-    a = str(addr or "").lower().strip()
+    """Classify an address as KY / other-state / unclear / blank.
+
+    July 2026: this now delegates to purge_out_of_state.detect_state() instead of
+    using its own rules. The old version only recognised another state from a
+    two-letter code immediately followed by a ZIP (", OH 45241"), so every one of
+    these fell through to "unclear" and was NOT dropped:
+
+        Los Angeles                      (no state token at all)
+        Houston, Texas                   (state spelled out)
+        Walnut Hills, Cincinnati, Ohio   (spelled out, mid-string)
+        Vancouver, B.C.                  (not a US state)
+
+    Eleven such rows reached "Good to go" in the July 2026 run and would have been
+    uploaded, then removed later by purge_out_of_state.py -- after publishing.
+
+    detect_state() already resolves abbreviation-before-ZIP, trailing two-letter
+    token, full state name, and a ZIP-prefix fallback, and it deliberately treats a
+    NON-KY match found only by a bare spelled-out name as low confidence, so a
+    street called "456 Texas St, Louisville" is not mistaken for Texas. Those route
+    to review rather than being dropped.
+
+    Sharing one resolver is the durable fix the Change Log calls for ("ideally via a
+    shared address-resolver module imported by both prepare.py and
+    purge_out_of_state.py so the two never drift apart"). Importing is safe: that
+    module's only executable statement is guarded by `if __name__ == "__main__"`.
+    """
+    a = str(addr or "").strip()
     if not a:
         return "blank"
-    if "kentucky" in a or re.search(r",?\s*ky\b", a):
+
+    abbr, method, confident = detect_state(a)
+    if abbr == "KY":
         return "KY"
-    m = re.search(r",\s*([a-z]{2})\s*\d{5}", a)
-    if m and m.group(1) in US_STATES and m.group(1) != "ky":
+    if abbr and abbr != "KY" and confident:
         return "other-state"
+
+    # detect_state deliberately reports a NON-KY full-name match as low confidence,
+    # because it also backs purge_out_of_state.py, which DELETES live rows -- there,
+    # "456 Texas St, Louisville" being read as Texas would destroy a real record.
+    #
+    # prepare.py runs BEFORE upload, so the cost of being wrong is asymmetric: a
+    # wrongly dropped candidate never gets published and is recoverable from the
+    # prepared CSV, whereas a wrongly kept one goes live and needs the purge later.
+    # That justifies one extra rule here that purge should NOT adopt:
+    #
+    #   a state name in the FINAL comma segment is a location, not a street name.
+    #     "Houston, Texas"                -> tail "texas"      -> Texas, drop
+    #     "Walnut Hills, Cincinnati, Ohio"-> tail "ohio"       -> Ohio, drop
+    #     "456 Texas St, Louisville"      -> tail "louisville" -> not matched, keep
+    #
+    # Anything still unresolved ("Los Angeles" with no state token, "Vancouver, B.C."
+    # which is not a US state) stays unclear and goes to human review. Never drop on
+    # uncertainty.
+    if abbr and abbr != "KY" and method == "full_name":
+        from purge_out_of_state import FULL_NAME_TO_ABBR
+        tail = " " + a.split(",")[-1].strip().lower() + " "
+        for name, ab in FULL_NAME_TO_ABBR.items():
+            if ab == abbr and re.search(r"\b" + re.escape(name) + r"\b", tail):
+                return "other-state"
+
     return "unclear"
 
 
@@ -123,7 +190,18 @@ def is_chain(name):
 # ── skip-known helpers (drop businesses already in the live directory) ─────────
 def _norm_name(name):
     n = str(name or "").lower().strip()
-    n = re.sub(r"[^\w\s]", "", n)      # drop punctuation
+    # "&" and "and" are the same word to a reader, but stripping punctuation turns
+    # "A & B" into "a  b" while "A and B" stays "a and b" -- two different keys for
+    # one business. Normalize before the punctuation strip, not after.
+    # (July 2026: this is why "SKS Accounting & Consulting Firm, Inc." did not match
+    # a scraped "SKS Accounting and Consulting Firm".)
+    n = n.replace("&", " and ")
+    # Hyphens and slashes SEPARATE words; every other mark is noise inside one.
+    # Order matters: deleting a hyphen glues words together ("Late-Nite" -> "latenite",
+    # which then fails to match a live "Late Nite"), while turning a period into a
+    # space would break "l.l.c." -> "llc" that the suffix strip in _dedup_name needs.
+    n = re.sub(r"[-/]", " ", n)
+    n = re.sub(r"[^\w\s]", "", n)      # drop remaining punctuation
     n = re.sub(r"\s+", " ", n)         # collapse whitespace
     return n
 
@@ -183,7 +261,10 @@ def fetch_live_identity():
             if not batch:
                 break
             for row in batch:
-                nm = _norm_name(row.get("business_name"))
+                # _dedup_name, not _norm_name: the scraped side is compared with the
+                # same key, so "Braxton Brewing Co." matches a live "Braxton Brewing
+                # Company" and does not upload as a duplicate.
+                nm = _dedup_name(row.get("business_name"))
                 st = _norm_site(row.get("website"))
                 if nm:
                     names.add(nm)
@@ -213,20 +294,32 @@ def load_denylist():
     return names, sites
 
 
-def commit_drops():
+def commit_drops(explicit=True):
     """Record your manual rejections so they never come back. Reads the CURRENT
     businesses_prepared.csv, takes every Dropped row that is NOT an auto-drop
     (chain, out-of-state, already-in-directory), and appends its identity to
-    denylist.csv. Run this AFTER you have flipped unwanted rows to 'Dropped' and
-    BEFORE you regenerate the file with a normal prepare.py run."""
+    denylist.csv.
+
+    July 2026: main() now calls this automatically before it regenerates the file,
+    so manual drops can no longer be lost. Previously this only ran when you
+    remembered `--commit-drops`, and it had to run BEFORE the next prepare.py --
+    a normal run overwrites businesses_prepared.csv, taking every unrecorded
+    rejection with it. One forgotten flag silently threw away a whole review pass
+    and the same businesses came back on the next run.
+
+    `explicit=False` is the automatic call: it stays quiet when there is nothing to
+    record, so a routine run does not print noise about work that did not happen.
+    """
     if not os.path.exists(OUTPUT_FILE):
-        print(f"No {os.path.basename(OUTPUT_FILE)} yet. Run prepare.py first, then drop rows.")
+        if explicit:
+            print(f"No {os.path.basename(OUTPUT_FILE)} yet. Run prepare.py first, then drop rows.")
         return
     df = pd.read_csv(OUTPUT_FILE, encoding="utf-8-sig").fillna("")
     dropped = df[df["Disposition"] == "Dropped"].copy()
     manual = dropped[~dropped["Reason"].isin(AUTO_DROP_REASONS)]
     if not len(manual):
-        print("No manual drops to record (only auto-drops present). Nothing added.")
+        if explicit:
+            print("No manual drops to record (only auto-drops present). Nothing added.")
         return
 
     new = manual[["Business Name", "Website"]].copy()
@@ -287,9 +380,19 @@ def _street_number(addr):
 def _dedup_name(name):
     """Normalized name with a trailing corporate suffix removed, so 'Joe's BBQ'
     and 'Joe's BBQ LLC' share a key. _norm_name has already lowercased and
-    stripped punctuation (l.l.c. -> llc)."""
+    stripped punctuation (l.l.c. -> llc).
+
+    July 2026: added company|pllc|plc|lp to the suffix list, and this key is now
+    ALSO what skip-known compares against the live directory. It used to compare
+    with _norm_name (no suffix stripping), so 'Braxton Brewing Co.' did not match
+    a live 'Braxton Brewing Company' and would upload as a duplicate. Measured on
+    the July run: 4 of 916 'Good to go' rows were live duplicates that skip-known
+    missed for exactly this reason. `company` was the specific miss -- the old
+    pattern had `co` but a trailing 'company' does not match `\\bco\\s*$`.
+    """
     n = _norm_name(name)
-    n = re.sub(r"\b(llc|inc|incorporated|corp|corporation|co|ltd|llp)\s*$", "", n).strip()
+    n = re.sub(r"\b(llc|inc|incorporated|corp|corporation|company|co|ltd|llp|pllc|plc|lp)\s*$",
+               "", n).strip()
     return n
 
 
@@ -423,7 +526,15 @@ def dedupe_rows(sub):
     return pd.DataFrame(rows, columns=OUTPUT_COLUMNS)
 
 
-def main():
+def main(remember_drops=True):
+    # Harvest manual rejections from the PREVIOUS businesses_prepared.csv before this
+    # run overwrites it. Without this, a review pass whose drops were never committed
+    # is silently discarded and those businesses reappear in the next review pile.
+    # Auto-drops (chain / out-of-state / already-live) are excluded -- the rules
+    # re-derive those every run, so only genuine human rejections are recorded.
+    if remember_drops:
+        commit_drops(explicit=False)
+
     print(f"Loading: {INPUT_FILE}")
     df = pd.read_csv(INPUT_FILE, encoding="utf-8-sig").fillna("")
     print(f"Rows in: {len(df)}")
@@ -463,7 +574,8 @@ def main():
         live_names, live_sites = fetch_live_identity()
         if live_names is not None:
             def _already_live(r):
-                name_hit = _norm_name(r["Business Name"]) in live_names
+                # Must use the SAME key builder as fetch_live_identity() above.
+                name_hit = _dedup_name(r["Business Name"]) in live_names
                 site = _norm_site(r["Website"])
                 site_hit = bool(site) and site in live_sites
                 return bool(name_hit or site_hit)
@@ -512,16 +624,24 @@ def main():
         print(dropped["Reason"].value_counts().to_string())
     print("\nNext: review the 'Needs review' rows, flip keepers to 'Good to go', "
           "then run upload_to_supabase.py.")
+    print("Rows you flip to 'Dropped' are remembered automatically the next time "
+          "prepare.py runs -- no --commit-drops needed.")
 
 
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description="Prepare scraped businesses for upload.")
     ap.add_argument("--commit-drops", action="store_true",
-                    help="Record the manual drops in the current businesses_prepared.csv "
-                         "to denylist.csv so they never come back. Run this BEFORE re-running prepare.")
+                    help="Record the manual drops in the current businesses_prepared.csv to "
+                         "denylist.csv, without regenerating anything. A normal run now does "
+                         "this automatically, so this is only needed to record drops without "
+                         "rebuilding the file.")
+    ap.add_argument("--no-remember-drops", action="store_true",
+                    help="Do NOT auto-record manual drops from the previous "
+                         "businesses_prepared.csv before regenerating. Use this only when you "
+                         "want to discard a review pass, e.g. you dropped rows by mistake.")
     args = ap.parse_args()
     if args.commit_drops:
         commit_drops()
     else:
-        main()
+        main(remember_drops=not args.no_remember_drops)
