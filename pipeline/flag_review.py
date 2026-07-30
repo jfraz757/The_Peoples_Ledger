@@ -45,6 +45,20 @@ from rapidfuzz import fuzz, process
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(PIPELINE_DIR)
 PREP_FILE = os.path.join(REPO_ROOT, "data", "businesses_prepared.csv")
+SOURCES_FILE = os.path.join(REPO_ROOT, "data", "businesses_scraped_sources.csv")
+
+# Flags serious enough that the row must not upload without a human looking at it.
+# These MOVE the row to "Needs review"; everything else is advisory only.
+#
+# July 2026: this script originally never touched Disposition, on the reasoning that
+# flags have false positives ("Hancock County Department of Veterans" matches
+# "Henderson County..." at 89% and is a different organisation). That was wrong.
+# "Needs review" is not a rejection, it means a human should look -- exactly what a
+# high-priority flag means. Leaving them as "Good to go" put the warning in a column
+# the reviewer was not filtering on, so 18 rows including a known live duplicate
+# passed a careful review pass untouched and would have uploaded.
+PROMOTE_TO_REVIEW = ("national brand", "OUT OF STATE", "no Kentucky signal",
+                     "ALREADY LIVE", "UNVERIFIED OWNERSHIP")
 
 # Needed for the live-duplicate check. Read-only: this script never writes to Supabase.
 try:
@@ -109,11 +123,49 @@ def fetch_live_names():
     return names
 
 
-def flag_row(row, name_counts, live_keys=None, live_choices=None):
+# "Minority-Owned (general)" is not a category. It is what the extractor emits when it
+# found ownership language somewhere on a page but could not attribute it to a specific
+# group -- which is exactly what happens when the page is ABOUT something else and the
+# business is merely mentioned on it.
+#
+# Measured on the July 2026 run: all 196 such rows came from the organic lane, none from
+# google_maps (which is gated on Google's own self-identified ownership attribute). They
+# cluster on pages with no ownership dimension at all:
+#
+#     93  somersetpulaskichamber.com/ribbon-cuttings/   every business that opened
+#     19  itsbuzzing.com/buy-local/.../farmers-markets  farmers markets
+#     14  thecovky.gov/experiencing-covington/          a tourism page
+#     11  owensborotimes.com/.../chamber-celebration    where R.W. Baird came from
+#
+# R.W. Baird is a ~$400B national investment firm. 610 Magnolia is Edward Lee's
+# restaurant -- he is Korean-American -- tagged Black-Owned off a Lee Initiative article
+# about a charity that FUNDS Black-owned restaurants.
+#
+# This is also why the live directory holds 283 unfilterable "Minority-Owned (general)"
+# rows. That was recorded as a taxonomy gap; it is really an evidence gap. Those rows may
+# never have had ownership evidence.
+#
+# An earlier attempt at this rule matched URL text for ownership words. It flagged 172 of
+# 333 organic rows (52%) and was wrong often: vobzone.com is a Veteran Owned Business
+# directory, aviatraaccelerators.org is a women's business accelerator, and neither URL
+# says so. The tag value itself is the reliable signal, not the URL.
+GENERIC_TAG = "minority-owned (general)"
+
+
+def flag_row(row, name_counts, live_keys=None, live_choices=None, found_via=""):
     """Return a list of reasons this row deserves a second look. Empty = looks fine."""
     flags = []
     name = str(row.get("Business Name") or "")
     addr = str(row.get("Address") or "").strip()
+
+    # Ownership tag provenance. Only meaningful for the organic lane: google_maps rows
+    # are gated on Google's own self-identified ownership attribute, so their tag does
+    # not come from page text at all.
+    src = str(row.get("Source") or "").strip()
+    mtype = str(row.get("Minority Type") or "").strip().lower()
+    if GENERIC_TAG in mtype and "organic" in src:
+        page = re.sub(r"^https?://(www\.)?", "", found_via)[:64] if found_via else "unknown page"
+        flags.append(f"UNVERIFIED OWNERSHIP: tagged only 'general' from page text -> {page}")
 
     # Near-duplicate of something already live. 88 is deliberately below the 93 that
     # prepare.py's own analysis used, because Blak Coffee/Koffee sits at 91 -- the
@@ -166,14 +218,38 @@ def main(report_only=False):
     if live_choices:
         print(f"Live directory loaded: {len(live_choices)} names for duplicate check.")
 
+    # "Found Via" is the page the scraper actually read. For an organic row it IS the
+    # evidence behind the ownership tag, so it belongs in the review file rather than
+    # buried in a separate audit log nobody opens.
+    via = {}
+    if os.path.exists(SOURCES_FILE):
+        s = pd.read_csv(SOURCES_FILE, encoding="utf-8-sig").fillna("")
+        if "Found Via" in s.columns:
+            for _, r in s.iterrows():
+                nm = str(r.get("Business Name") or "").strip()
+                if nm and str(r.get("Found Via") or "").strip():
+                    via.setdefault(nm, str(r["Found Via"]).strip())
+        print(f"Source audit loaded: {len(via)} 'Found Via' URLs.")
+    df["Found Via"] = [via.get(str(n).strip(), "") for n in df["Business Name"]]
+
     # "Needs review" rows are flagged too. That is where Blak Coffee sat -- an
     # already-live business in the manual pile, which is exactly the review time
     # this script exists to save.
     flags = []
     for _, row in df.iterrows():
-        flags.append("; ".join(flag_row(row, name_counts, live_keys, live_choices))
+        flags.append("; ".join(flag_row(row, name_counts, live_keys, live_choices,
+                                        row.get("Found Via", "")))
                      if row["Disposition"] in ("Good to go", "Needs review") else "")
     df["Review Flag"] = flags
+
+    # Move serious flags into the workflow the reviewer actually uses. A "Good to go"
+    # row with a warning buried in a column is a row that ships unreviewed.
+    promoted_mask = (df["Disposition"] == "Good to go") & \
+                    df["Review Flag"].str.contains("|".join(PROMOTE_TO_REVIEW), na=False)
+    n_promoted = int(promoted_mask.sum())
+    if n_promoted and not report_only:
+        df.loc[promoted_mask, "Disposition"] = "Needs review"
+        df.loc[promoted_mask, "Reason"] = "flagged: " + df.loc[promoted_mask, "Review Flag"].str[:70]
 
     flagged = df[df["Review Flag"] != ""]
     print(f"Good to go rows : {len(good)}")
@@ -199,12 +275,16 @@ def main(report_only=False):
             print(f"  {str(r['Business Name'])[:38]:40} | {str(r['Address'])[:26]:28} | {r['Review Flag']}")
 
     if report_only:
-        print("\n--report: nothing written.")
+        print(f"\nWould move {int(promoted_mask.sum())} row(s) to 'Needs review'.")
+        print("--report: nothing written.")
         return
 
     df.to_csv(PREP_FILE, index=False, encoding="utf-8-sig")
-    print(f"\nWrote 'Review Flag' column -> {os.path.basename(PREP_FILE)}")
-    print("Sort or filter on it for your review pass. Disposition was not changed.")
+    print(f"\nWrote 'Review Flag' + 'Found Via' -> {os.path.basename(PREP_FILE)}")
+    if n_promoted:
+        print(f"Moved {n_promoted} flagged row(s) from 'Good to go' to 'Needs review' so they "
+              f"cannot upload unexamined.")
+    print("Filter Disposition = 'Needs review'. Everything needing a decision is there.")
 
 
 if __name__ == "__main__":

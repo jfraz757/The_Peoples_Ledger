@@ -31,6 +31,60 @@ function slugify(name) {
     .replace(/^-+|-+$/g, "");
 }
 
+// Assign every business ONE unique slug, used for the filename, the sitemap <loc>, and
+// the canonical/og:url inside the page. Those three were computing slugify(name)
+// independently, so two businesses sharing a name silently shared a URL: the second
+// write overwrote the first, the sitemap listed the same <loc> twice, and one business
+// had no page at all.
+//
+// Found July 2026 with 2,066 businesses producing only 2,064 files. Both collisions were
+// legitimate multi-location businesses, not bad data -- Fiesta Mexico in Campbellsville
+// AND Nicholasville, V.C. Veterans Contracting in Lexington AND Richmond. prepare.py
+// deliberately keeps same-name rows with different street numbers apart, so this will
+// recur whenever a business has two locations.
+//
+// EXISTING URLS MUST NOT CHANGE: over a thousand of these pages are indexed by Google.
+// So the first business to claim a slug keeps the bare form and only later collisions
+// get a suffix. Ordering is by slug then id, never by fetch order, so the same business
+// resolves to the same URL on every regeneration.
+function cityFromAddress(address) {
+  // "801 S Main St, Nicholasville, KY 40356" -> "Nicholasville"
+  const parts = String(address || "").split(",").map(s => s.trim()).filter(Boolean);
+  if (parts.length < 2) return "";
+  // Walk back past the "KY 40356" / "KY" tail to the city segment.
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (/^[A-Za-z]{2}(\s+\d{5}(-\d{4})?)?$/.test(parts[i])) continue;
+    if (/^\d{5}(-\d{4})?$/.test(parts[i])) continue;
+    if (i === 0) return "";           // only a street line, no city
+    return parts[i];
+  }
+  return "";
+}
+
+function assignSlugs(businesses) {
+  const ordered = [...businesses].sort((a, b) => {
+    const sa = slugify(a.business_name || ""), sb = slugify(b.business_name || "");
+    return sa < sb ? -1 : sa > sb ? 1 : (a.id || 0) - (b.id || 0);
+  });
+  const used = new Set();
+  let collisions = 0;
+  for (const b of ordered) {
+    const base = slugify(b.business_name || "");
+    if (!base) { b._slug = ""; continue; }
+    if (!used.has(base)) { b._slug = base; used.add(base); continue; }
+    collisions++;
+    const city = slugify(cityFromAddress(b.address));
+    let candidate = city ? `${base}-${city}` : `${base}-${b.id}`;
+    if (used.has(candidate)) candidate = `${base}-${b.id}`;
+    b._slug = candidate;
+    used.add(candidate);
+  }
+  if (collisions) {
+    console.log(`  ${collisions} name collision(s) disambiguated by city (existing URLs unchanged).`);
+  }
+  return businesses;
+}
+
 // Split comma-separated fields into clean arrays
 function splitField(val) {
   if (!val || !val.trim()) return [];
@@ -99,7 +153,7 @@ function buildBusinessPage(biz) {
     status, kentucky_based, certification_type
   } = biz;
 
-  const slug         = slugify(business_name);
+  const slug         = biz._slug || slugify(business_name);
   const minorityList = splitField(minority_type);
   const certList     = splitField(certification_type);
   const phoneDisplay = formatPhone(phone);
@@ -479,7 +533,7 @@ function buildSitemap(businesses) {
   const today = new Date().toISOString().split("T")[0];
   const urls = businesses.map(b => `
   <url>
-    <loc>${SITE_URL}/businesses/${slugify(b.business_name)}.html</loc>
+    <loc>${SITE_URL}/businesses/${b._slug}.html</loc>
     <lastmod>${today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -509,13 +563,17 @@ async function main() {
   const businesses = await fetchAllBusinesses();
   console.log(`  ${businesses.length} businesses fetched.`);
 
+  // Must run before any page, filename, or sitemap entry is produced -- all three read
+  // biz._slug and must agree.
+  assignSlugs(businesses);
+
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR);
 
   let written = 0;
   let skipped = 0;
   for (const biz of businesses) {
     if (!biz.business_name || !biz.business_name.trim()) { skipped++; continue; }
-    const slug = slugify(biz.business_name);
+    const slug = biz._slug;
     const html = buildBusinessPage(biz);
     fs.writeFileSync(path.join(OUT_DIR, `${slug}.html`), html, "utf8");
     written++;
