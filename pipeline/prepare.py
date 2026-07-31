@@ -200,7 +200,7 @@ def _norm_name(name):
     # Order matters: deleting a hyphen glues words together ("Late-Nite" -> "latenite",
     # which then fails to match a live "Late Nite"), while turning a period into a
     # space would break "l.l.c." -> "llc" that the suffix strip in _dedup_name needs.
-    n = re.sub(r"[-/]", " ", n)
+    n = re.sub(r"[-/,]", " ", n)
     n = re.sub(r"[^\w\s]", "", n)      # drop remaining punctuation
     n = re.sub(r"\s+", " ", n)         # collapse whitespace
     return n

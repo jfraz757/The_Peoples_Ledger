@@ -348,6 +348,32 @@
       margin-bottom: 12px;
     }
 
+    /* State certification badges, coloured by granting agency. Deliberately OUTLINED
+       rather than filled: the solid gold .card-type badge is the ownership category and
+       must stay the loudest thing on the card. These are supporting credentials, and on
+       a dark theme an outline reads as secondary without needing a second bright fill. */
+    .card-certs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 12px;
+    }
+    .cert-badge {
+      font-size: 0.62rem;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border: 1px solid;
+      border-radius: 2px;
+      cursor: help;              /* the title attribute carries the full name + agency */
+      white-space: nowrap;
+    }
+    .cert-hrc    { color: #7FD1FF; border-color: rgba(127,209,255,0.55); }  /* Louisville HRC */
+    .cert-kytc   { color: #9BE59B; border-color: rgba(155,229,155,0.55); }  /* KY Transportation */
+    .cert-kyfin  { color: #E5A6FF; border-color: rgba(229,166,255,0.55); }  /* KY Finance */
+    .cert-shared { color: #FFD700; border-color: rgba(255,215,0,0.45); }    /* HRC + KY Finance */
+    .cert-other  { color: rgba(255,255,255,0.55); border-color: rgba(255,255,255,0.3); }
+
     .card-services span {
       color: rgba(255,255,255,0.45);
       font-style: italic;
@@ -1068,6 +1094,14 @@
     <button class="pill" data-type="Native American-Owned" onclick="filterByType(this)">Native American-Owned</button>
     <button class="pill" data-type="Disability-Owned" onclick="filterByType(this)">Disability-Owned</button>
     <button class="pill" data-type="Muslim-Owned" onclick="filterByType(this)">Muslim-Owned</button>
+    <!-- These pills filter minority_type ONLY, which holds ownership demographics.
+         State certifications live in their own column and get their own filter below.
+         Do not add a pill for a certification (MBE, SBE, ...): a certification is not an
+         ownership demographic, and duplicating it here caused a real collision in July
+         2026 -- the RPC matches ownership with ilike '%value%', so a "Minority-Owned"
+         pill also returned the 283 unrelated "Minority-Owned (general)" rows. Two
+         vocabularies in one column cannot be filtered apart. -->
+
   </div>
 
   <div class="filter-label" style="margin-top:16px;">Filter by Industry</div>
@@ -1367,6 +1401,37 @@
   const SUPABASE_KEY = "sb_publishable_A0zmuZVHVPtosZrNdFE4GQ_sITuTrkg";
   const PAGE_SIZE    = 24;
 
+  // ─── State certification labels ──────────────────────────────
+  // Which agency grants each certification, so a badge can be coloured by source.
+  // Verified against the 2026-07-29 exports; see Section 6a of the technical reference.
+  // MBE and WBE are granted by BOTH Louisville HRC and KY Finance -- they are keyed to
+  // "shared" rather than picking one arbitrarily.
+  const CERT_SOURCE = {
+    MBE: "shared",  WBE: "shared",           // Louisville HRC + KY Finance
+    MWBE: "kyfin",                            // KY Finance only
+    DBE: "kytc",    SBE: "kytc",              // KY Transportation only
+    VOSB: "hrc",    SDVOSB: "hrc",            // Louisville HRC only
+    DIBE: "hrc",    LGBTBE: "hrc",
+  };
+  const CERT_AGENCY = {
+    hrc:    "Louisville Metro Human Relations Commission",
+    kytc:   "Kentucky Transportation Cabinet",
+    kyfin:  "Kentucky Finance & Administration Cabinet",
+    shared: "Louisville Metro HRC / KY Finance & Administration",
+    other:  "State certifier",
+  };
+  const CERT_LABEL = {
+    MBE:    "Minority Business Enterprise",
+    WBE:    "Women Business Enterprise",
+    MWBE:   "Minority and Women Business Enterprise",
+    DBE:    "Disadvantaged Business Enterprise",
+    SBE:    "Small Business Enterprise (size-based, not ownership)",
+    VOSB:   "Veteran-Owned Small Business",
+    SDVOSB: "Service-Disabled Veteran-Owned Small Business",
+    DIBE:   "Disability Business Enterprise",
+    LGBTBE: "LGBT Business Enterprise",
+  };
+
   // ─── STATE ──────────────────────────────────────────────────
   let currentPage    = 1;
   let totalCount     = 0;
@@ -1516,6 +1581,18 @@
     const typeLabel = b.minority_type
       ? `<div class="card-type">${b.minority_type}</div>` : "";
 
+    // State certification badges, coloured by the agency that granted them.
+    // certification_type only ever comes from one of the three certifying bodies, so a
+    // badge here means a government verified this, not that a submitter claimed it.
+    // "Unknown" / "Not Certified" are legacy placeholder values and are never displayed.
+    const certBadges = (b.certification_type || "")
+      .split(",").map(c => c.trim()).filter(c => c && !["Unknown", "Not Certified"].includes(c))
+      .map(c => {
+        const src = CERT_SOURCE[c] || "other";
+        return `<span class="cert-badge cert-${src}" title="${CERT_LABEL[c] || c} — ${CERT_AGENCY[src]}">${c}</span>`;
+      }).join("");
+    const certRow = certBadges ? `<div class="card-certs">${certBadges}</div>` : "";
+
     return `
       <div class="card">
         <div class="card-header-row">
@@ -1523,6 +1600,7 @@
           <div class="card-name">${b.business_name || "Unknown Business"}</div>
         </div>
         ${typeLabel}
+        ${certRow}
         ${address}
         ${phone}
         ${b.services_products ? `<div class="card-detail card-services">
