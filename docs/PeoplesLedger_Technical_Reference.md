@@ -8,7 +8,7 @@
 
 The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address.
 
-**Record count: 2,066** (verified against the live table 2026-07-30). The figure was documented as 1,794 for a month after the out-of-state purge dropped it; Section 12 and `README.md` carried the same stale number. **When the count changes, update it in all three places or none of them will be trustworthy.** Get the real number with:
+**Record count: 2,315** (verified against the live table 2026-07-31). The figure was documented as 1,794 for a month after the out-of-state purge dropped it; Section 12 and `README.md` carried the same stale number. **When the count changes, update it in all three places or none of them will be trustworthy.** Get the real number with:
 
 ```bash
 python -c "import json;print(len(json.load(open('backups/<latest>/businesses.json',encoding='utf-8'))))"
@@ -579,7 +579,7 @@ node generate-business-pages.js
 - CTA linking back to `index.html?search=BusinessName` and to the full directory
 - Canonical URL and Open Graph meta tags for SEO
 
-**Sitemap:** `/businesses/sitemap.xml` lists every business page plus `index.html` and `about.html`. First submitted to Google Search Console June 24, 2026 (1,266 pages discovered, Status: Success). Regenerated June 2026 after dedupe and enrichment. **Current count: 2,066** pages, matching the live table exactly (verified 2026-07-30). The 1,794 figure here was stale by a month -- the out-of-state purge had dropped it.
+**Sitemap:** `/businesses/sitemap.xml` lists every business page plus `index.html` and `about.html`. First submitted to Google Search Console June 24, 2026 (1,266 pages discovered, Status: Success). Regenerated June 2026 after dedupe and enrichment. **Current count: 2,315** pages, matching the live table exactly (verified 2026-07-31). The 1,794 figure here was stale by a month -- the out-of-state purge had dropped it.
 Submit sitemap at: `https://search.google.com/search-console`
 Sitemap URL: `https://thepeoplesledger.net/businesses/sitemap.xml`
 

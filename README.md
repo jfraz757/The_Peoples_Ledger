@@ -25,7 +25,7 @@ If the work is too political, it is because it is too honest.
 
 A full-stack directory of underrepresented businesses in Kentucky: a live, searchable, public-facing database built on open-source tooling and community data. It is designed to operate independently of government certification systems, which were never built to serve everyday consumers in the first place.
 
-The directory currently contains **2,066** verified, deduplicated business records spanning 23 industry categories and 10 ownership types (count verified against the live table 2026-07-30). It is live, searchable, and exportable by anyone.
+The directory currently contains **2,315** verified, deduplicated business records spanning 23 industry categories and 10 ownership types (count verified against the live table 2026-07-30). It is live, searchable, and exportable by anyone.
 
 ---
 

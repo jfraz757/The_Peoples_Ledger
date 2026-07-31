@@ -1104,6 +1104,26 @@
 
   </div>
 
+  <!-- State certification. A SEPARATE filter from ownership because it reads a separate
+       column holding a separate kind of fact: a government granted this, it is not a
+       demographic. "Any" is first because most visitors want "show me certified
+       businesses", not a specific acronym. Only ~590 of 2,315 rows carry one, so this
+       filter is expected to return a small set -- that is the data, not a bug. -->
+  <div class="filter-label" style="margin-top:16px;">Filter by State Certification</div>
+  <div class="filter-row" id="cert-pills">
+    <button class="pill cert-pill active" data-cert="All" onclick="filterByCert(this)">All</button>
+    <button class="pill cert-pill" data-cert="Any" onclick="filterByCert(this)">Any State Certification</button>
+    <button class="pill cert-pill" data-cert="MBE" onclick="filterByCert(this)">MBE</button>
+    <button class="pill cert-pill" data-cert="WBE" onclick="filterByCert(this)">WBE</button>
+    <button class="pill cert-pill" data-cert="MWBE" onclick="filterByCert(this)">MWBE</button>
+    <button class="pill cert-pill" data-cert="DBE" onclick="filterByCert(this)">DBE</button>
+    <button class="pill cert-pill" data-cert="SBE" onclick="filterByCert(this)">SBE</button>
+    <button class="pill cert-pill" data-cert="VOSB" onclick="filterByCert(this)">VOSB</button>
+    <button class="pill cert-pill" data-cert="SDVOSB" onclick="filterByCert(this)">SDVOSB</button>
+    <button class="pill cert-pill" data-cert="DIBE" onclick="filterByCert(this)">DIBE</button>
+    <button class="pill cert-pill" data-cert="LGBTBE" onclick="filterByCert(this)">LGBTBE</button>
+  </div>
+
   <div class="filter-label" style="margin-top:16px;">Filter by Industry</div>
   <div class="filter-row" id="industry-pills">
     <button class="pill industry-pill active" data-industry="All" onclick="filterByIndustry(this)">All Industries</button>
@@ -1437,6 +1457,7 @@
   let totalCount     = 0;
   let activeType     = "All";
   let activeIndustry = "All";
+  let activeCert     = "All";   // state certification filter (separate column from ownership)
   let nameQuery      = "";
   let areaQuery      = "";
   let serviceQuery   = "";
@@ -1454,6 +1475,15 @@
       page_limit:      PAGE_SIZE,
       page_offset:     from,
     });
+    // cert_filter is sent ONLY when a certification is actually selected.
+    //
+    // PostgREST resolves an RPC by the exact argument names supplied, so passing
+    // cert_filter to a function that does not declare it returns 404 -- not a filter that
+    // is ignored, a hard failure of the whole search. Omitting it while "All" is selected
+    // means this page keeps working against the OLD 6-argument function, so deploying the
+    // HTML before running add_cert_filter_rpc.sql degrades to "the certification pills do
+    // not work" instead of "the directory is broken".
+    if (activeCert && activeCert !== "All") params.set("cert_filter", activeCert);
 
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/search_businesses?${params.toString()}`, {
       headers: {
@@ -1651,6 +1681,14 @@
     render();
   }
 
+  function filterByCert(btn) {
+    document.querySelectorAll(".cert-pill").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    activeCert  = btn.dataset.cert;
+    currentPage = 1;
+    render();
+  }
+
   function filterByIndustry(btn) {
     document.querySelectorAll(".industry-pill").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
@@ -1685,6 +1723,21 @@
       if (areaQuery) exportParams.set("address", `ilike.%${areaQuery}%`);
       if (activeType !== "All") exportParams.set("minority_type", `ilike.%${activeType}%`);
       if (activeIndustry !== "All") exportParams.set("industry", `eq.${activeIndustry}`);
+      // Export must honour the certification filter too, or downloading a filtered view
+      // silently returns rows the user cannot see on screen.
+      //
+      // This is a direct PostgREST query, not the RPC, so it cannot do the comma-wrapped
+      // whole-label match the RPC uses. A plain ilike would let VOSB also match inside
+      // SDVOSB. Two filters on the same column are therefore combined: the substring
+      // narrows it, then `not.ilike` removes the one label that contains another as a
+      // substring. Keep this in step with CERT_SOURCE if a new overlapping label appears.
+      if (activeCert === "Any") {
+        exportParams.set("certification_type", "not.is.null");
+        exportParams.set("and", "(certification_type.not.eq.Unknown,certification_type.not.eq.Not Certified)");
+      } else if (activeCert !== "All") {
+        exportParams.set("certification_type", `ilike.%${activeCert}%`);
+        if (activeCert === "VOSB") exportParams.set("and", "(certification_type.not.ilike.%SDVOSB%)");
+      }
 
       const res     = await fetch(`${SUPABASE_URL}/rest/v1/businesses?${exportParams.toString()}`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
       const records = await res.json();
