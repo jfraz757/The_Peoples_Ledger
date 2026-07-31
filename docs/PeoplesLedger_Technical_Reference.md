@@ -76,6 +76,7 @@ The_Peoples_Ledger/
 │   ├── clean_addresses.py      # Strip "N/A" tokens from addresses (dry-run default)
 │   ├── purge_out_of_state.py   # Remove rows whose address resolves to a non-KY state
 │   ├── maintain.py             # Link-status check (monthly) + buyblack fix (as needed)
+│   ├── flag_review.py          # Annotates businesses_prepared.csv before your review pass
 │   ├── ledger.py               # Thin orchestrator: prep / publish / maintain / enrich-new
 │   └── view_database.py        # Open a data/ CSV in D-Tale
 │   #  NOTE: there is NO reconcile_certifications.py. Lane 2 intake lives in the
@@ -108,8 +109,10 @@ The_Peoples_Ledger/
 │   ├── category_review.csv             # Lane 1b manual-review queue (Tier C)
 │   ├── category_progress.json          # Lane 1b resume state
 │   ├── businesses_prepared.csv         # prepare.py output (the file you review)
-│   ├── denylist.csv                    # Deliberate drops, from prepare.py --commit-drops
+│   ├── denylist.csv                    # Deliberate drops, recorded automatically by prepare.py
 │   ├── .enrich_submissions_state.json  # enrich_submissions.py watermark
+│   ├── .maintain_state.json            # maintain.py: id -> last link check (25-day skip window)
+│   ├── archive/<timestamp>/            # Scrape files consumed by a completed upload
 │   └── cache/                          # Cached HTML, Maps responses, extractions
 │
 ├── backups/                    # GITIGNORED — DB dumps; contain submitter PII
@@ -265,6 +268,41 @@ generate-business-pages.js → regenerates the static /businesses/ pages
 
 ---
 
+## 6b. Ownership evidence — the two lanes are NOT equally trustworthy
+
+This is the single most important thing to understand before publishing anything from a scrape.
+
+| lane | how ownership is decided | trust |
+|---|---|---|
+| `google_maps` | Google's own **owner-set attribute** — `extensions: [{"from_the_business": ["Identifies as Black-owned"]}]`, which the owner sets on their Business Profile | **strong** |
+| `organic` | ownership language found in the text of a fetched page | **weak** |
+
+`maps_extension_strings()` reads **extensions only, never the title or types**, and matches the phrase `"black-owned"`, not bare `"black"`. So `Black Seal Turnovers` and `Blackstone Grill` are treated identically — only the attribute counts. That guard works; it was verified against the raw cached Maps response.
+
+**Every ownership error found in the July 2026 review came from the organic lane. None came from Maps.** The failure mode is that the extractor inherits the *page's* topic:
+
+- **R.W. Baird**, a ~$400B national investment firm, tagged `Minority-Owned (general)` from an Owensboro Times chamber-awards article.
+- **610 Magnolia** tagged `Black-Owned` from a Lee Initiative "grantee spotlight … racial justice" article — a charity that *funds* Black-owned restaurants. It is Edward Lee's restaurant and he is Korean-American. (It would legitimately qualify as `Asian-Owned`.)
+
+### `Minority-Owned (general)` is not a category
+
+It is what the extractor emits when it finds ownership language on a page but cannot attribute it to a group. All 196 such rows in the July run came from `organic`, **zero** from `google_maps`, and they clustered on pages with no ownership dimension at all:
+
+```
+93  somersetpulaskichamber.com/ribbon-cuttings/   every business that opened
+19  itsbuzzing.com/buy-local/.../farmers-markets  farmers markets
+14  thecovky.gov/experiencing-covington/          a tourism page
+11  owensborotimes.com/.../chamber-celebration    where R.W. Baird came from
+```
+
+The 283 such rows already live in the directory are almost certainly the same contamination from earlier runs. That was previously recorded as a *taxonomy* gap (no matching filter pill); it is really an **evidence** gap. Exported to `data/live_minority_general_review.csv` for audit — 282 of 283 have `source: null`, so they predate source tracking and have no `Found Via` trail at all.
+
+**The July 2026 publishing decision ("Option A"):** only rows carrying a Google owner attribute were uploaded — 622 of 967 candidates. All 333 organic rows were held. If you relax this, understand you are publishing the lane that produced every known error.
+
+**A URL-pattern rule does not work as a substitute.** An attempt to flag organic rows whose source URL lacked ownership words hit 172 of 333 (52%) and was wrong often: `vobzone.com` is a Veteran Owned Business directory and `aviatraaccelerators.org` is a women's business accelerator, neither of which says so in the URL. The **tag value** is the reliable signal, not the URL.
+
+---
+
 ## 6a. Lane 2 — Certification spreadsheets (what exists, what does not)
 
 **What `certification_type` means.** It records a GOVERNMENT-granted status and may only originate from one of the three certifying bodies. It is never scraped, never inferred, and — since July 2026 — never accepted from a submitter. **Blank is the CORRECT value for the large majority of the directory** (1,327 of 1,443 rows): it means "minority-owned by our own verification, holding no state certification." Absence of a certification is accurate data, not a gap to be filled. Most minority-owned businesses have no state certification and that is fine; they belong here on equal footing. Self-reported and scrape-verified ownership is welcome and is what `minority_type` is for.
@@ -397,6 +435,7 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 | `pipeline/enrich_submissions.py` | Targeted version of `enrich.py` for community submissions approved in admin.html. Reads the `submissions` table for `status = approved` / `submission_type = new` rows submitted after a stored watermark, matches each to its `businesses` row by exact `business_name`, and fills `industry`/`services_products` only where needed (reuses `enrich.py`'s classify/infer functions). Watermark lives in `data/.enrich_submissions_state.json` (gitignored) so re-runs only touch newly-approved rows. Rows with no exact name match are skipped and printed for manual follow-up. Flags: `--dry-run` (preview, does not advance watermark), `--since ISO_TIMESTAMP` (override watermark), `--limit N`. Also runnable via `python pipeline/ledger.py enrich-new`. Does not regenerate static pages — still run `generate-business-pages.js` after. | After each batch of admin.html approvals | ~$0.75-1.00/1000 (only for rows needing work) |
 | `pipeline/dedupe_live.py` | Merge duplicate rows in the live table. Groups by normalized name; survivor keeps the best address and the real business website (not a buyblack.org placeholder); same-name + same-phone rows merge even when addresses differ; genuine address conflicts go to a review CSV. `--selftest`, `--dry-run` (default), `--apply`. Needs the service-role key. | As needed | Free |
 | `pipeline/maintain.py` | Link-status check; `--buyblack` also resolves buyblack.org URLs | Monthly / as needed | Free / SerpApi |
+| `pipeline/flag_review.py` | Annotates `businesses_prepared.csv` with `Review Flag` and `Found Via` before your manual pass, and MOVES serious flags to "Needs review" so they cannot upload unexamined. Flags: national brand, out-of-state, no Kentucky signal, near-duplicate of a live row (fuzzy ≥88), and unverified ownership. `--report` prints without writing. Re-run after any `prepare.py`, which rebuilds the file from a fixed column list and discards both added columns. | Before each review pass | Free |
 | `pipeline/ledger.py` | Thin orchestrator: `prep` (prepare + resolve_review, stops for review), `publish` (upload + enrich industries + enrich services), `maintain` (dry-run health checks), `enrich-new` (= enrich_submissions.py) | Routine path | Varies |
 | `pipeline/resolve_review.py` | Auto-settles "Needs review" rows: finds the business's real site (even when the listed link is a listicle), reads the address, promotes KY / drops out-of-state. `--limit N`, `--dry-run`, `--no-serp` | After prepare.py | SerpApi (small) |
 | `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
@@ -717,7 +756,44 @@ SerpApi calls distinguish a real failure from a genuine empty result. A quota-ex
 - Haiku is the extraction model. If ownership-type judgment proves unreliable on some sources, route only those to Sonnet.
 ---
 
+## 19a. Pipeline ordering — filter at intake, not after
+
+**The governing rule: every cheap filter runs before every expensive step.** Violating it is not a style problem, it is money and hours. Measured on the July 2026 cycle before the fix: **906 rows were fetched and Claude-extracted, written to CSV, then discarded** by `prepare.py` — 800 already in the directory, 83 out-of-state, 23 chains.
+
+Three things caused it, all now fixed:
+
+**1. `scrape.py` had no chain filter and no state filter at all.** It does now, in `add_business()` — the single function every business from every lane passes through, so it is the only place that can stop a doomed row cheaply. Maps results carry a structured address, so the state check is free.
+
+**2. The two stages used different keys.** `scrape.py` matched known businesses on exact name **AND** website; `prepare.py` on normalised name **OR** website. Rows sailed through the strict check and were caught by the loose one two stages later. `scrape.py` now **imports** `is_chain`, `addr_state`, `_dedup_name` and `_norm_site` from `prepare.py`. Do not reimplement any of them — a second copy is how they drift apart, and the same lesson applies to the address resolver shared with `purge_out_of_state.py`.
+
+**3. Scrape output was never consumed.** `businesses_scraped.csv` persisted forever, so `prepare.py` re-filtered it every run: it held 1,786 rows of which **116 were new**, and 800 of the "already in directory" drops were businesses uploaded in *previous* cycles. `upload_to_supabase.py` now archives the consumed files to `data/archive/<timestamp>/` after a successful upload. **`scraper_progress.json` is deliberately NOT archived** — it records which SerpApi searches have already been paid for, and deleting it means paying again.
+
+Two related idempotency fixes:
+
+- **`maintain.py`** re-fetched every website on every run; the July cycle checked all 2,066 twice in one day. It now skips anything checked within 25 days (`data/.maintain_state.json`, saved every 25 rows so a crash does not lose the run). `--all` forces a full sweep.
+- **`generate-business-pages.js`** rewrote every file even when unchanged, so git saw 649 modified files for a run that changed 623 businesses. It now compares content first. A no-op run reports `0 written, 2066 unchanged` and leaves git clean.
+
+---
+
 ## 20. Change Log
+
+### July 2026 (30th) — Quarterly refresh published, and the pipeline reordered
+
+**Published: 1,443 → 2,066.** 622 scraped rows plus one community submission. Every published row carries a Google owner-set ownership attribute; all 333 organic-lane rows were held (see Section 6b). Verified duplicate-free against the live table on three keys — exact name, website, fuzzy ≥88 — before upload. Enrichment: 622 industries, 620 services, 0 errors, 23 categories, no tags outside the nine filter pills.
+
+**The scrape.** 32 terms × 34 cities (was 15 × 22), 2,240 SerpApi searches of a 5,000 monthly plan. Facebook and Instagram were **measured and then skipped**: a 300-URL random sample returned **0 businesses**, because Meta now answers unauthenticated fetches with HTTP 400 and no `og:` tags. They were 2,171 of 3,810 queued URLs — 57% of the scan queue for zero yield. `INCLUDE_SOCIAL_SEARCHES` is now False. 12 more junk hosts added to `SKIP_DOMAINS`. The remaining 1,639 URLs yielded 8.4%.
+
+**`resolve_review.py` was discarding the answer.** It read only `organic_results`, picked a link, fetched that page and parsed HTML — while the same SerpApi response carried a `knowledge_graph` with the address, phone and real website already parsed. For "Mama's on Main" it chose an OpenTable booking page, found nothing, and left the row in the pile; the response contained `621 Main St, Covington, KY 41011`. It now reads the structured result first and falls back to fetch-and-parse only when there is none. The query also gained the service and a city hint derived from the aggregator domain (`thecovky.gov` → Covington), because `'"Olla" official website'` finds nothing while `'"Olla" Restaurant Covington Kentucky'` returns `ollacov.com` immediately. Review pile: **101 → 27** rows.
+
+**Three silent data-quality bugs in `prepare.py`:** skip-known compared live names without stripping corporate suffixes while the in-file dedup stripped them, so `Braxton Brewing Co.` did not match a live `Braxton Brewing Company` (4 duplicates would have published); `addr_state` only detected another state from a two-letter code followed by a ZIP, so `Houston, Texas` and `Cincinnati, Ohio` passed as "unclear" (11 rows); and manual review drops were only remembered if you remembered `--commit-drops` **before** the next run overwrote the file — one forgotten flag discarded a whole review pass. All fixed; drops are now recorded automatically.
+
+**`generate-business-pages.js` slug collisions.** `slugify(name)` was computed independently in the page template, the sitemap and the write loop, so two businesses sharing a name shared a URL: 2,066 businesses produced 2,064 files and a duplicate `<loc>`. Both cases were legitimate multi-location businesses. Fixed with one assigned slug per business; the first claimant keeps the bare form so no indexed URL moved.
+
+**`maintain.py` crashed on a non-ASCII business name** — `UnicodeEncodeError` inside the `except` block that reports a fetch failure, killing a run at ~1,400 of 2,066 and leaving 660 rows unset. stdout/stderr are now forced to UTF-8. An error report must never be less printable than a success line.
+
+**Pipeline reordered** — see Section 19a.
+
+**Open:** 345 rows held in `businesses_prepared.csv` (200 unverified ownership, 128 organic, 17 flagged); 283 live `Minority-Owned (general)` rows exported to `data/live_minority_general_review.csv` for audit; the 12 Middle-Eastern/African businesses mislabeled `Latine`/`Asian` are still unfixed.
 
 ### July 2026 — Security hardening, backups, and a documentation failure
 
