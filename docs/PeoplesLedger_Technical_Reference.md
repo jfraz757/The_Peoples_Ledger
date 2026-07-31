@@ -86,11 +86,17 @@ The_Peoples_Ledger/
 │
 ├── Minority_Biz_Database_Project/     # LANE 2 — certification spreadsheets (committed)
 │   ├── data_gather_.ipynb             # THE EXISTING LANE 2 CLEANER. See Section 6a.
-│   ├── Spreadsheets/
-│   │   ├── Louisville_HRC/            # Louisville_HRC_<Month>_<Year>.csv
-│   │   ├── KY_Transportation_Cabinet/ # KY_Trans_Cab_<Month>_<Year>.csv
-│   │   └── KY_Finance_&_Administration/  # KY_F&A_<Month>_<Year>.csv
+│   ├── Spreadsheets/                  # ONE current export per certifier, plus archive/
+│   │   ├── Louisville_HRC/            #   Directory_<date>_<id>.csv until the notebook renames it
+│   │   │   └── archive/               #   superseded exports; keeps exactly one CSV in the parent
+│   │   ├── KY_Transportation_Cabinet/
+│   │   │   └── archive/
+│   │   └── KY_Finance_&_Administration/   # .xlsx, converted by notebook cell 2
 │   └── Old_KY_Biz_Spreadsheets/       # GITIGNORED archive (2023 spreadsheets + verifier)
+│   #  KEEP EXACTLY ONE CSV IN EACH ACTIVE FOLDER. Notebook cell 4 does glob('*.csv') and
+│   #  takes [0] with only a printed warning, so a leftover prior export can be renamed
+│   #  instead of the new one -- silently stamping old data with the current month. The
+│   #  archive/ subfolders exist for that reason; glob is not recursive so they are safe.
 │
 ├── docs/
 │   ├── PeoplesLedger_Technical_Reference.md   # This file
