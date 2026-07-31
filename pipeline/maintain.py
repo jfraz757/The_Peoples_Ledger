@@ -29,9 +29,20 @@ Usage:
 """
 
 import os
+import sys
 import time
 import argparse
 import requests
+
+# Business names contain non-ASCII characters (accents, curly apostrophes, CJK). On
+# Windows stdout defaults to cp1252, so printing one raises UnicodeEncodeError -- and
+# because the crash happened INSIDE the except block that reports a fetch failure, it
+# killed the whole run mid-pass. July 2026: a run died at ~1,400 of 2,066 this way,
+# leaving 660 rows with no status. Errors must never be less printable than successes.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from supabase import create_client
 from dotenv import load_dotenv
 
