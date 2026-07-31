@@ -40,8 +40,7 @@ Lane 1: Web discovery (quarterly)
   scrape.py  ->  prepare.py  ->  [human review]  ->  upload  ->  enrich  ->  maintain  ->  SEO pages
 
 Lane 2: Certification spreadsheets (as agencies refresh)
-  manual download  ->  data_gather_.ipynb (convert/rename)  ->  [MANUAL merge]  ->  businesses table
-  NOTE: the reconcile step is NOT automated. Intake only.
+  manual download  ->  data_gather_.ipynb (convert/rename)  ->  reconcile_certifications.py  ->  businesses table
 ```
 
 The live website reads from Supabase at runtime. It is a static site with no build step, so none of the Python tooling or working data is part of what gets deployed.
@@ -183,7 +182,7 @@ Open `admin.html` locally. It is gitignored and never pushed to GitHub.
 | Regenerate SEO pages | `node generate-business-pages.js` | After upload (quarterly) |
 | Refresh link statuses | `python pipeline/maintain.py` | Monthly |
 | Fix buyblack URLs | `python pipeline/maintain.py --buyblack` | As needed |
-| Reconcile certification lists | Manual. Intake via `Minority_Biz_Database_Project/data_gather_.ipynb` (cells 2 and 4); the match-against-live-table step is not automated | As agencies refresh |
+| Reconcile certification lists | Intake via `Minority_Biz_Database_Project/data_gather_.ipynb` (cells 2 and 4), then `python pipeline/reconcile_certifications.py` (dry-run default; `--apply`, `--insert-new`) | As agencies refresh |
 
 ---
 

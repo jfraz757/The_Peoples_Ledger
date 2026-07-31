@@ -63,6 +63,7 @@ The_Peoples_Ledger/
 ├── backup_supabase.py          # Dumps all tables to backups/<timestamp>/ as JSON (July 2026)
 ├── restrict_anon_grants.sql    # APPLIED July 2026 — revoked anon write access
 ├── drop_permissive_policies.sql# APPLIED July 2026 — dropped over-permissive RLS policies
+├── add_cert_filter_rpc.sql     # APPLIED July 2026 — cert_filter arg on search_businesses
 │
 ├── pipeline/                   # All maintenance scripts (run manually, not deployed)
 │   ├── scrape.py               # Lane 1 web discovery: Google Maps, listicles, social
@@ -77,10 +78,11 @@ The_Peoples_Ledger/
 │   ├── purge_out_of_state.py   # Remove rows whose address resolves to a non-KY state
 │   ├── maintain.py             # Link-status check (monthly) + buyblack fix (as needed)
 │   ├── flag_review.py          # Annotates businesses_prepared.csv before your review pass
+│   ├── reconcile_certifications.py  # Lane 2: certifier lists -> businesses (built July 2026)
 │   ├── ledger.py               # Thin orchestrator: prep / publish / maintain / enrich-new
 │   └── view_database.py        # Open a data/ CSV in D-Tale
-│   #  NOTE: there is NO reconcile_certifications.py. Lane 2 intake lives in the
-│   #  Minority_Biz_Database_Project notebook below; the reconcile step does not exist.
+│   #  NOTE: Lane 2 INTAKE (download/convert/rename) lives in the
+│   #  Minority_Biz_Database_Project notebook below, NOT in pipeline/.
 │
 ├── Minority_Biz_Database_Project/     # LANE 2 — certification spreadsheets (committed)
 │   ├── data_gather_.ipynb             # THE EXISTING LANE 2 CLEANER. See Section 6a.
@@ -153,7 +155,13 @@ The_Peoples_Ledger/
 | industry | TEXT | One of 23 standardized categories (assigned by Claude API) |
 | status | TEXT | Active / Inactive / No Website — reflects link check, not business operating status |
 | kentucky_based | TEXT | Yes / No |
-| certification_type | TEXT | Comma-separated if multiple — DBE, MBE, WBE, MWBE, SBE, ACDBE, VBE, SDVBE, LGBTBE, Not Certified, Unknown |
+| certification_type | TEXT | Comma-separated if multiple. **Only these nine values:** `MBE`, `WBE`, `MWBE`, `DBE`, `SBE`, `VOSB`, `SDVOSB`, `DIBE`, `LGBTBE`. NULL when the business holds no state certification — which is most of them. |
+
+**`certification_type` and `minority_type` are separate fields holding separate facts. Never write one into the other.** `minority_type` is an ownership demographic; `certification_type` is a government-granted status. Blurring them breaks filtering, because the search RPC matches ownership with `ilike '%value%'`: in July 2026 a `Minority-Owned` ownership pill returned 360 rows — 77 government-verified MBE holders mixed with 283 unrelated `Minority-Owned (general)` rows from the scraper's organic lane. Two vocabularies in one column cannot be filtered apart. When a certifier does not record the owner's demographic, leave `minority_type` blank; the business is still reachable through the certification filter.
+
+**There are no sentinel values.** `"Not Certified"` and `"Unknown"` were previously documented as valid and were offered as checkboxes on the public form, so a submitter could store "I am not certified" *as* a certification. Absence is `NULL`. One such row existed (`Bring Your Own Sauce`, id 1267) and was cleared 2026-07-31; the form checkboxes were removed the same week. `generate-business-pages.js` still filters both strings from display as a belt-and-braces guard — leave that in place, but do not reintroduce the values.
+
+Note the old list here also contained `ACDBE`, `VBE` and `SDVBE`, none of which appear in any of the three certifier exports. The nine above are verified against the 2026-07-29 files.
 
 **No `status` field for moderation** — unlike CandidateVoice, every record in `businesses` is public. There is no pending/approved gate on this table. All new business submissions go through `submissions` first.
 
@@ -321,7 +329,43 @@ This notebook is the Lane 2 cleaner. Do not rebuild it.
 
 Cell 7 already encodes the two file-format traps: `encoding='cp1252'` and `skiprows=5` for both B2GNow CSVs, `skiprows=3` for the xlsx. **Workflow:** drop the fresh downloads into the matching `Spreadsheets/` subfolder, then run cells 2 and 4. Note both cells stamp filenames from *today's* date, and cell 2 deletes the `.xlsx`, so keep an original elsewhere if you want one.
 
-### ❌ DOES NOT EXIST — the reconcile step
+### ✅ EXISTS — the reconcile: `pipeline/reconcile_certifications.py` (built July 2026)
+
+```bash
+python pipeline/reconcile_certifications.py                    # DRY RUN (default)
+python pipeline/reconcile_certifications.py --apply            # backfill labels only
+python pipeline/reconcile_certifications.py --apply --insert-new   # also add businesses
+```
+
+Two jobs: **backfill** `certification_type` on businesses already in the directory, and **insert** certified businesses it does not have. First run (2026-07-31): 252 backfills, 249 inserts, **0 duplicates created**. Certification coverage went 116 → 590 rows, directory 2,066 → 2,315.
+
+It is built around duplicate insertion, not wrong labels, because that is what the hand-done June merge actually produced. Safeguards:
+
+- matching is **conservative** — exact key, then website, then fuzzy ≥93
+- anything scoring **85–93 goes to a review CSV** and is never applied. Three pairs were correctly held on the first run (`C.E. Scott` vs `Mindel Scott`, `Fresh` vs `ESP`, `Hicks` vs `VIC`)
+- **insertion sits behind a second flag** (`--insert-new`), separate from `--apply`
+- every tier is printed before anything writes
+
+**The comma-glue bug.** `GOULD ELECTRIC,LLC` with no space after the comma became `electricllc` once punctuation was deleted, so the corporate-suffix strip could not see the `LLC` and it did not match the live `GOULD ELECTRIC, LLC`. Same class as the hyphen bug in `prepare.py`: **a comma between words is a separator and must become a space, not vanish.** Fixed in both key builders — it alone would have inserted 2 duplicates.
+
+**SBE never justifies an insertion.** It certifies size, not ownership. It is recorded when a business already in the directory holds it (87 did), but a business is never added because of it alone. 16 SBE-only companies were added on the first run as a deliberate scope decision; they carry a blank `minority_type` and are reachable through the certification filter.
+
+### The State Certification filter
+
+`add_cert_filter_rpc.sql` adds a `cert_filter` argument to `search_businesses`. Two things in it are load-bearing:
+
+- **`DROP` before `CREATE`.** Adding an argument creates an *overload*, not a replacement, and PostgREST then cannot choose between the 6- and 7-argument versions — every search fails with "Could not choose the best candidate function".
+- **`GRANT EXECUTE` afterwards.** `DROP` destroys the function's grants. Without re-granting, `anon` cannot call it and the site returns 401 on every search. Since July 2026 `anon` holds only `SELECT` on `businesses`, so EXECUTE on this RPC is what makes search work at all.
+
+**Whole-label matching, not substring.** `certification_type` is comma-separated, and a plain `ILIKE '%VOSB%'` also matches inside `SDVOSB`. Both sides are wrapped in commas. Verified live: `VOSB` returns 5, not 10.
+
+**`index.html` sends `cert_filter` only when a certification is selected.** PostgREST resolves an RPC by exact argument names, so passing an undeclared argument returns 404 for the *whole directory*, not just the filter. Omitting it while "All" is selected means the page still works against the old function, so deploying the HTML before running the SQL degrades to "the pills do nothing" rather than "the site is down".
+
+Live counts after the merge: All 2,315 · Any 589 · MBE 193 · WBE 281 · MWBE 104 · DBE 43 · SBE 116 · VOSB 5 · SDVOSB 5 · DIBE 6 · LGBTBE 2.
+
+Cards show badges coloured by granting agency — HRC blue, KYTC green, KY Finance purple, gold where both HRC and KY Finance grant the same label. Outlined rather than filled so the gold ownership badge stays the primary signal.
+
+### Historical — what did not exist before July 2026
 
 Nothing matches these files against the live `businesses` table. That is still done by hand. The June 2026 HRC merge (277 records, 208 unique companies) was a manual pass, and it is the source of the 116 rows that currently carry a `certification_type`.
 
@@ -440,7 +484,7 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 | `pipeline/resolve_review.py` | Auto-settles "Needs review" rows: finds the business's real site (even when the listed link is a listicle), reads the address, promotes KY / drops out-of-state. `--limit N`, `--dry-run`, `--no-serp` | After prepare.py | SerpApi (small) |
 | `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
 | `backup_supabase.py` (repo root) | Dumps `businesses` + `submissions` to `backups/<timestamp>/` as JSON. Paginates at 1000 (PostgREST truncates silently) and exits non-zero on a zero-row dump so a scheduled run cannot fail quietly. Reads URL + service-role key from admin.html so the key lives in one place. | Before any schema/RLS/grant change; daily via Task Scheduler | Free |
-| Lane 2 reconcile | **Does not exist.** Intake is `Minority_Biz_Database_Project/data_gather_.ipynb`; the match-against-live-table step is still manual. See Section 6a. | — | — |
+| `pipeline/reconcile_certifications.py` | Lane 2: matches the certifier lists against the live table, backfills `certification_type`, and inserts certified businesses not yet present. Dry-run by default; `--apply` backfills, `--insert-new` also inserts. Matches 85-93 go to a review CSV and are never auto-applied. Needs the service-role key. | As agencies refresh (quarterly) | Free |
 
 **Consolidation note:** `prepare.py` replaces the old `triage` + `clean_ky_businesses.py`; `enrich.py` replaces `categorize_industries.py` + `fill_missing_services.py`; `maintain.py` replaces `check_link_status.py` + `fix_buyblack_urls.py`.
 
@@ -776,6 +820,18 @@ Two related idempotency fixes:
 ---
 
 ## 20. Change Log
+
+### July 2026 (31st) — Lane 2 built; certification becomes a first-class field
+
+**The reconcile exists now** (Section 6a). 252 backfills, 249 inserts, 0 duplicates created. Directory 2,315; certification coverage 116 → 590. The three certifier lists are finally usable rather than staged and stranded.
+
+**Certification is separately filterable.** New `cert_filter` argument on `search_businesses`, an 11-pill filter row on the site, and badges on each card coloured by granting agency.
+
+**The mistake worth remembering: I put certification vocabulary into the ownership column.** The first reconcile derived a `minority_type` when the certifier did not record a demographic — `Minority-Owned` for a bare MBE, `Small Business Enterprise` for SBE-only. Because the RPC matches ownership with `ilike '%value%'`, a `Minority-Owned` pill then returned 360 rows: 77 government-verified MBE holders mixed with the 283 unrelated `Minority-Owned (general)` rows from the scraper's organic lane. Nothing could separate them, because they were never the same kind of claim. Joe's correction — *"the state certification type should be a separate field from minority type"* — is the rule now: **two vocabularies in one column cannot be filtered apart.** The 76 fabricated values were cleared and the two pills added to prop them up were removed.
+
+**Sentinel values are gone.** `"Not Certified"` / `"Unknown"` were documented as valid `certification_type` values and offered as public form checkboxes, so a submitter could file "I am not certified" *as* a certification. Absence is `NULL`. One row (id 1267) cleared.
+
+**Comma-glue bug** in both name-key builders: `GOULD ELECTRIC,LLC` → `electricllc`, so the suffix strip could not see the `LLC`. A comma between words is a separator. Would have inserted 2 duplicates.
 
 ### July 2026 (30th) — Quarterly refresh published, and the pipeline reordered
 
