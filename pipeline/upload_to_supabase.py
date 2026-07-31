@@ -23,6 +23,8 @@ Usage:
 
 import os
 import math
+import shutil
+from datetime import datetime
 import pandas as pd
 from supabase import create_client
 from dotenv import load_dotenv
@@ -103,8 +105,43 @@ def main():
         print(f"  Uploaded {uploaded}/{total} records...")
 
     print(f"\nDone. {uploaded} records loaded into Supabase.")
-    print("Now run the enrichment steps: categorize_industries.py, "
-          "fill_missing_services.py, then check_link_status.py.")
+    archive_scrape_files(uploaded)
+    print("\nNext: python pipeline/enrich.py  ->  python pipeline/maintain.py  ->  "
+          "node generate-business-pages.js")
+
+
+def archive_scrape_files(uploaded):
+    """Move the consumed scrape output aside once its rows are safely in Supabase.
+
+    These files used to persist forever, so every later run re-processed them. In the
+    July 2026 cycle businesses_scraped.csv held 1,786 rows of which only 116 were new:
+    prepare.py re-filtered, re-deduped and re-skip-known the other 1,670 every single
+    time, and 800 of them were dropped as "already in directory" -- businesses uploaded
+    in PREVIOUS cycles.
+
+    Archived rather than deleted: the scrape is the audit trail for how a business was
+    found, and re-running the scraper does not reproduce a deleted file. The progress
+    file is deliberately LEFT ALONE -- it records which SerpApi searches have been paid
+    for, and losing it means paying for them again.
+    """
+    if not uploaded:
+        print("  (nothing uploaded, scrape files left in place)")
+        return
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    archive_dir = os.path.join(DATA_DIR, "archive", stamp)
+    moved = []
+    for name in ("businesses_scraped.csv", "businesses_scraped_checkpoint.csv",
+                 "businesses_scraped_sources.csv", "businesses_prepared.csv"):
+        src = os.path.join(DATA_DIR, name)
+        if os.path.exists(src):
+            os.makedirs(archive_dir, exist_ok=True)
+            shutil.move(src, os.path.join(archive_dir, name))
+            moved.append(name)
+    if moved:
+        print(f"  Archived {len(moved)} consumed file(s) -> data/archive/{stamp}/")
+        print(f"    {', '.join(moved)}")
+        print("  The next prepare.py will see only NEW scrape output.")
+        print("  scraper_progress.json kept: it records already-paid SerpApi searches.")
 
 
 if __name__ == "__main__":

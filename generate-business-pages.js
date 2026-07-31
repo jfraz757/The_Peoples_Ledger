@@ -571,14 +571,23 @@ async function main() {
 
   let written = 0;
   let skipped = 0;
+  let unchanged = 0;
   for (const biz of businesses) {
     if (!biz.business_name || !biz.business_name.trim()) { skipped++; continue; }
     const slug = biz._slug;
     const html = buildBusinessPage(biz);
-    fs.writeFileSync(path.join(OUT_DIR, `${slug}.html`), html, "utf8");
+    const dest = path.join(OUT_DIR, `${slug}.html`);
+    // Only write when the content actually differs. Rewriting an identical file still
+    // updates its mtime and, more to the point, git sees every file as modified: a run
+    // that changed 623 businesses produced 649 modified files and a commit touching all
+    // of them. Comparing first keeps the diff honest about what changed.
+    let existing = null;
+    try { existing = fs.readFileSync(dest, "utf8"); } catch { /* new file */ }
+    if (existing === html) { unchanged++; continue; }
+    fs.writeFileSync(dest, html, "utf8");
     written++;
   }
-  console.log(`  ${written} business pages written to /businesses/`);
+  console.log(`  ${written} business page(s) written, ${unchanged} unchanged.`);
   if (skipped) console.log(`  ${skipped} records skipped (no business name).`);
 
   const sitemap = buildSitemap(businesses.filter(b => b.business_name && b.business_name.trim()));

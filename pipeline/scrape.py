@@ -134,6 +134,28 @@ CACHE_TTL_DAYS      = 30        # Re-fetch / re-extract a page only after it is 
 # .env. Fuzzy near-duplicate matching is left to clean_ky_businesses.py.
 SKIP_KNOWN_BUSINESSES = True
 
+# --- Intake filters -----------------------------------------------------------
+# Reuse prepare.py's chain list, address resolver and match keys rather than writing
+# a second copy. If these ever diverge, rows pass one stage and get discarded by the
+# other, which is exactly what was happening before July 2026. Set _INTAKE_FILTERS
+# False to fall back to the old behaviour (write everything, filter downstream).
+_INTAKE_FILTERS = True
+_INTAKE_DROPS = {"chain": 0, "out-of-state": 0, "already in directory": 0}
+_known_keys = None      # normalised live business names, filled at startup
+_known_sites = set()    # normalised live websites
+
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from prepare import (is_chain as _is_chain, addr_state as _addr_state,
+                         _dedup_name, _norm_site)
+except Exception as _e:                                   # pragma: no cover
+    print(f"  [intake filters off: could not import from prepare.py: {_e}]")
+    _INTAKE_FILTERS = False
+    _is_chain = lambda n: False
+    _addr_state = lambda a: "unclear"
+    _dedup_name = lambda n: (n or "").strip().lower()
+    _norm_site = lambda u: (u or "").strip().lower()
+
 # Hard backstop: stop the run before exceeding this many SerpApi searches in a
 # single invocation, regardless of plan. A full statewide pass is about 690, so
 # this leaves room for retries and social searches while making a runaway loop
@@ -1129,6 +1151,36 @@ def add_business(b: dict, database: list, seen: set) -> bool:
     key = business_key(name, b.get("website", ""))
     if key in seen:
         return False
+
+    # --- Intake gate (July 2026) -------------------------------------------------
+    # Every business from every lane passes through here, so this is the one place
+    # that can stop a doomed row before it costs anything further.
+    #
+    # Previously nothing was filtered here: chains, out-of-state businesses, and
+    # businesses already in the directory were all written to the CSV, and prepare.py
+    # discarded them later -- after the fetch and the Claude extraction had been paid
+    # for. The July run threw away 800 already-known, 83 out-of-state and 23 chain
+    # rows that way.
+    #
+    # These use prepare.py's OWN functions, imported rather than reimplemented, so the
+    # two stages can never disagree about what counts as a chain, a non-KY address, or
+    # a business we already have. That mismatch was the bug: scrape matched known
+    # businesses on exact name AND website, prepare on normalised name OR website, so
+    # rows sailed through the strict check and were caught by the loose one later.
+    if _INTAKE_FILTERS:
+        if _is_chain(name):
+            _INTAKE_DROPS["chain"] += 1
+            return False
+        addr = (b.get("address") or "").strip()
+        if addr and _addr_state(addr) == "other-state":
+            _INTAKE_DROPS["out-of-state"] += 1
+            return False
+        if _known_keys is not None:
+            site = _norm_site(b.get("website", ""))
+            if _dedup_name(name) in _known_keys or (site and site in _known_sites):
+                _INTAKE_DROPS["already in directory"] += 1
+                return False
+
     seen.add(key)
     database.append(b)
     print(f"  -> Added: {name} | {b.get('minority_type', '')} | {b.get('_source', '')}")
@@ -1155,6 +1207,37 @@ def build_database():
         print("\n=== Loading existing directory from Supabase ===")
         known_keys, known_hosts, known_urls, _ = fetch_known_businesses()
         seen_businesses |= known_keys   # exact name+website matches are filtered from output
+
+        # Build the LOOSE keys the intake gate uses. known_keys above is
+        # business_key(name, website) -- an exact pair -- which almost never matches a
+        # scrape. These are the same normalised name / website keys prepare.py uses,
+        # so a business already in the directory is stopped here instead of being
+        # extracted and discarded two stages later.
+        if _INTAKE_FILTERS:
+            global _known_keys, _known_sites
+            _known_keys, _known_sites = set(), set()
+            try:
+                offset, page = 0, 1000
+                while True:
+                    r = requests.get(
+                        f"{SUPABASE_URL}/rest/v1/businesses",
+                        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+                        params={"select": "business_name,website", "order": "id.asc",
+                                "limit": page, "offset": offset}, timeout=30)
+                    r.raise_for_status()
+                    batch = r.json()
+                    for row in batch:
+                        nm = _dedup_name(row.get("business_name") or "")
+                        st = _norm_site(row.get("website") or "")
+                        if nm: _known_keys.add(nm)
+                        if st: _known_sites.add(st)
+                    if len(batch) < page:
+                        break
+                    offset += page
+                print(f"  Intake gate armed: {len(_known_keys)} names, {len(_known_sites)} websites.")
+            except Exception as e:
+                print(f"  [intake gate: could not load live keys, name/site skip disabled: {e}]")
+                _known_keys = None
 
     maps_done        = set(p["maps_done"])
     api_done         = set(p["api_done"])
@@ -1356,6 +1439,11 @@ def build_database():
         persist()
         print(f"\nDone. {len(database)} businesses saved to {OUTPUT_FILE}")
         print(f"SerpApi searches used this run: {_SEARCH_COUNT}")
+        if _INTAKE_FILTERS and any(_INTAKE_DROPS.values()):
+            total = sum(_INTAKE_DROPS.values())
+            print(f"Intake gate rejected {total} row(s) before they reached the CSV: " +
+                  ", ".join(f"{v} {k}" for k, v in _INTAKE_DROPS.items() if v))
+            print("  (previously these were extracted, written, then discarded by prepare.py)")
         if SKIP_KNOWN_BUSINESSES:
             print(f"Skipped {skipped_known} URLs already in the directory "
                   f"(no fetch, no extraction spent on them).")

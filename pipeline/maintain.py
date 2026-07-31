@@ -30,8 +30,10 @@ Usage:
 
 import os
 import sys
+import json
 import time
 import argparse
+from datetime import datetime, timedelta, timezone
 import requests
 
 # Business names contain non-ASCII characters (accents, curly apostrophes, CJK). On
@@ -48,6 +50,7 @@ from dotenv import load_dotenv
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT    = os.path.dirname(PIPELINE_DIR)
+DATA_DIR     = os.path.join(REPO_ROOT, "data")
 load_dotenv(os.path.join(REPO_ROOT, ".env"))
 
 SUPABASE_URL  = os.getenv("SUPABASE_URL")
@@ -90,7 +93,29 @@ def check_url(url):
         return "Inactive"
 
 
-def run_links(supabase):
+STATE_FILE = os.path.join(DATA_DIR, ".maintain_state.json")
+RECHECK_AFTER_DAYS = 25          # monthly cadence, with slack so a re-run does not redo everything
+
+
+def _load_checked():
+    """id -> ISO timestamp of the last successful link check."""
+    try:
+        with open(STATE_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_checked(state):
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f)
+    except Exception as e:
+        print(f"  [could not write {os.path.basename(STATE_FILE)}: {e}]")
+
+
+def run_links(supabase, force_all=False):
     print("\n[Links] Fetching records with websites...")
     records, offset, page = [], 0, 1000
     while True:
@@ -100,7 +125,31 @@ def run_links(supabase):
         if len(resp.data) < page:
             break
         offset += page
-    print(f"[Links] to check: {len(records)}")
+    total_found = len(records)
+
+    # Skip anything checked recently. Every run used to re-fetch every website: the
+    # July 2026 cycle checked all 2,066 twice in one day, the second pass repeating
+    # ~1,400 sites that had been checked hours earlier. A link status does not change
+    # hour to hour, so re-checking is pure wall-clock cost and pointless load on the
+    # businesses' servers. --all forces a full sweep.
+    checked = _load_checked()
+    if not force_all:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=RECHECK_AFTER_DAYS)
+        fresh = set()
+        for r in records:
+            ts = checked.get(str(r["id"]))
+            if not ts:
+                continue
+            try:
+                if datetime.fromisoformat(ts) > cutoff:
+                    fresh.add(r["id"])
+            except ValueError:
+                pass
+        records = [r for r in records if r["id"] not in fresh]
+        if fresh:
+            print(f"[Links] skipping {len(fresh)} checked within {RECHECK_AFTER_DAYS} days "
+                  f"(use --all to force)")
+    print(f"[Links] to check: {len(records)} of {total_found}")
 
     active = inactive = err = 0
     for i, r in enumerate(records, 1):
@@ -109,11 +158,16 @@ def run_links(supabase):
             supabase.table("businesses").update({"status": status}).eq("id", r["id"]).execute()
             active += status == "Active"
             inactive += status != "Active"
+            checked[str(r["id"])] = datetime.now(timezone.utc).isoformat()
+            if i % 25 == 0:
+                _save_checked(checked)   # survive a crash mid-run
             print(f"  [{i}/{len(records)}] {str(r['business_name'])[:42]:<42} {status}")
         except Exception as e:
             err += 1
             print(f"  ERROR {r.get('business_name','?')}: {e}")
         time.sleep(SLEEP_LINKS)
+
+    _save_checked(checked)
 
     print("[Links] Marking no-website records...")
     supabase.table("businesses").update({"status": "No Website"}).is_("website", "null").execute()
@@ -172,13 +226,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--links", action="store_true", help="re-check website statuses (default)")
     ap.add_argument("--buyblack", action="store_true", help="resolve buyblack.org URLs (uses SerpApi)")
+    ap.add_argument("--all", action="store_true",
+                    help="re-check every website, ignoring the 25-day skip window")
     args = ap.parse_args()
     do_links = args.links or not args.buyblack   # default to links if nothing chosen
 
     print("Connecting to Supabase...")
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     if do_links:
-        run_links(supabase)
+        run_links(supabase, force_all=args.all)
     if args.buyblack:
         run_buyblack(supabase)
     print("\nMaintenance complete.")
