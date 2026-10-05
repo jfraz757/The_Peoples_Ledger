@@ -8,7 +8,7 @@
 
 The People's Ledger is a free, public, searchable directory of underrepresented businesses in Kentucky. It was built to serve everyday consumers — not procurement officers — filling a gap that supplier diversity programs were never designed to address.
 
-**Record count: 2,315** (verified against the live table 2026-07-31). The figure was documented as 1,794 for a month after the out-of-state purge dropped it; Section 12 and `README.md` carried the same stale number. **When the count changes, update it in all three places or none of them will be trustworthy.** Get the real number with:
+**Record count: 2,391** (verified against the live table 2026-10-05). The figure was documented as 1,794 for a month after the out-of-state purge dropped it; Section 12 and `README.md` carried the same stale number. **When the count changes, update it in all three places or none of them will be trustworthy.** Get the real number with:
 
 ```bash
 python -c "import json;print(len(json.load(open('backups/<latest>/businesses.json',encoding='utf-8'))))"
@@ -847,6 +847,14 @@ Two related idempotency fixes:
 ---
 
 ## 20. Change Log
+
+### October 2026 (5th, evening) — First quarterly run on the new pipeline: 2,297 → 2,391
+
+**Lane 1.** 612 SerpApi searches (Maps only), 95 candidates after the intake gate rejected 58 (7 chains, 10 out-of-state, 41 already listed). 9 hit the denylist — 8 were franchise locations declined in July (Beltone, Liberty Tax, Jackson Hewitt, Shred Nations); the ninth, The Melroy, had been declined in July only for page-text evidence and now carried Google's owner attribute, so it was published. Review decisions: 9 address-less Maps rows checked by area code and website — 3 kept (Kentucky numbers), 5 dropped as out-of-state (513 Cincinnati, 917 New York, a Michigan events firm, two resolved by re-scrape). 8 franchise/chain locations dropped and added to `CHAIN_BLOCKLIST` so they stop at intake next time. **73 published.** Yield is ~0.12 new businesses per search, down from ~0.28 in July, as expected once the directory already holds most attribute-tagged businesses.
+
+**Lane 2.** 28 certifications backfilled, 21 certified businesses inserted (17 new on the lists, 4 near-misses confirmed distinct). See Section 6a.
+
+**Enrichment.** 95 industries, 94 descriptions, 0 errors. One description (The Melroy) was a guess from the name — "hotel or boutique lodging" — and was corrected by hand from the business's own site to "private members club". Descriptions written for businesses with no services text are inferences from the name; a hedge ("X or Y") in one is the tell.
 
 ### October 2026 (5th) — Efficiency review: cost, runtime, and two things that were silently broken
 
