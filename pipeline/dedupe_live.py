@@ -22,7 +22,7 @@ cluster of 2 or more rows it:
      address differences, or one copy missing the street address) or a REAL
      CONFLICT (two genuinely different street addresses, e.g. The Logo Warehouse).
        - Trivial  -> auto-merge: survivor patched, twins deleted.
-       - Conflict -> written to data/dedupe_review.csv, left untouched for you.
+       - Conflict -> two real locations; written to data/dedupe_review.csv and left alone.
 
 Safety
 ------
@@ -108,8 +108,21 @@ def normalize_address(addr):
 
 def street_number(norm_addr):
     """First standalone number that looks like a house/box number, or None.
-    Used to tell a real street-address conflict from a formatting difference."""
-    m = re.search(r"\b(\d{1,6})\b", norm_addr)
+    Used to tell a real street-address conflict from a formatting difference.
+
+    The ZIP code is removed first. Without that, a city-only address such as
+    "Louisville, KY 40211" yielded 40211 as its "street number", so it 'conflicted'
+    with "670 S 39th St, Louisville, KY 40211" -- the same business -- and the pair
+    was sent to manual review instead of merging (Skips Defense Solutions, Thompson
+    Catering, October 2026)."""
+    s = re.sub(r"\b\d{5}(\s\d{4})?\s*$", "", norm_addr).strip()   # trailing ZIP / ZIP+4
+    m = re.search(r"\b(\d{1,6})\b", s)
+    return m.group(1) if m else None
+
+
+def zip_code(addr):
+    """The 5-digit ZIP at the end of an address, or None."""
+    m = re.search(r"\b(\d{5})(?:\s\d{4})?\s*$", normalize_address(addr))
     return m.group(1) if m else None
 
 
@@ -175,7 +188,14 @@ def addresses_conflict(a, b):
     return fuzz.token_sort_ratio(na, nb) < 88
 
 
-def union_csv(values):
+# Generic ownership tags. When a merged cluster also carries a specific type, these are
+# dropped rather than unioned in: "Black-Owned, Women-Owned, Minority-Owned (general)"
+# says no more than "Black-Owned, Women-Owned", and the generic tag is the unverified
+# page-text label (Section 6b). Same rule as prepare.best_minority_type.
+GENERIC_OWNERSHIP = {"minority-owned (general)", "minority-owned"}
+
+
+def union_csv(values, drop_generic=False):
     """Union comma-separated tokens across rows, preserving first-seen order."""
     seen, out = set(), []
     for v in values:
@@ -187,6 +207,8 @@ def union_csv(values):
             if tok and key not in seen:
                 seen.add(key)
                 out.append(tok)
+    if drop_generic and any(t.lower() not in GENERIC_OWNERSHIP for t in out):
+        out = [t for t in out if t.lower() not in GENERIC_OWNERSHIP]
     return ", ".join(out)
 
 
@@ -243,12 +265,19 @@ def build_plan(rows):
         # A loser is a real conflict only if its address conflicts with the
         # survivor AND it does not share the survivor's phone. Same name plus
         # same phone is a duplicate even when the street addresses differ.
+        # ...unless the two ZIP codes differ: then they are two locations of one business
+        # that share a central phone number (V.C. Veterans Contracting, Lexington 40509
+        # and Richmond 40475), and merging would delete a real listing.
         sp = normalize_phone(survivor.get("phone"))
+        sz = zip_code(survivor.get("address"))
         incompatible = []
         for r in losers:
             if addresses_conflict(survivor.get("address"), r.get("address")):
                 rp = normalize_phone(r.get("phone"))
-                if not (sp and rp and sp == rp):
+                rz = zip_code(r.get("address"))
+                same_phone = sp and rp and sp == rp
+                different_zip = sz and rz and sz != rz
+                if not same_phone or different_zip:
                     incompatible.append(r)
 
         if incompatible:
@@ -283,7 +312,8 @@ def build_plan(rows):
             patch["website"] = best_site.get("website")
 
         for f in UNION_FIELDS:
-            merged = union_csv([survivor.get(f)] + [r.get(f) for r in losers])
+            merged = union_csv([survivor.get(f)] + [r.get(f) for r in losers],
+                               drop_generic=(f == "minority_type"))
             if merged and merged.lower() != str(survivor.get(f) or "").strip().lower():
                 patch[f] = merged
 
@@ -364,6 +394,12 @@ def selftest():
          True, "Royal Crane: PO box vs street, different city"),
         ("Louisville, KY", "Louisville, Kentucky",
          False, "city only, both copies"),
+        ("670 S. 39th St., Louisville, KY, 40211", "Louisville, KY 40211",
+         False, "ZIP is not a street number (Skips Defense)"),
+        ("Winchester, KY 40391", "121 Hud Road, Winchester, Kentucky 40391",
+         False, "ZIP is not a street number (Thompson Catering)"),
+        ("1307 E Broadway St, Campbellsville, KY 42718", "801 S Main St, Nicholasville, KY 40356",
+         True, "Fiesta Mexico: two real locations"),
     ]
     ok = True
     for a, b, expect, label in cases:
@@ -397,6 +433,8 @@ def main():
     ap.add_argument("--apply", action="store_true",
                     help="Actually patch survivors and delete twins. "
                          "Without this flag the script only writes the plan CSVs.")
+    ap.add_argument("--yes", action="store_true",
+                    help="With --apply: skip the confirmation question.")
     ap.add_argument("--selftest", action="store_true",
                     help="Validate address logic against known examples and exit.")
     args = ap.parse_args()
@@ -419,8 +457,8 @@ def main():
     print("\n--- SUMMARY ---")
     print(f"  Auto-merge clusters : {len(auto_merges)}")
     print(f"  Rows to delete      : {rows_removed}")
-    print(f"  Conflict clusters   : {conflict_clusters} "
-          f"({len(conflicts)} rows) -> needs your review")
+    print(f"  Kept separate       : {conflict_clusters} name(s), {len(conflicts)} rows -- "
+          f"same name, different locations (listed in dedupe_review.csv; nothing to do)")
     print(f"\n  Plan written   : {plan_path}")
     print(f"  Review written : {review_path}")
 
@@ -429,16 +467,21 @@ def main():
               "re-run with --apply to perform the auto-merges.")
         return
 
-    print("\n--apply set. Performing auto-merges...")
-    confirm = input(f"This will patch {len(auto_merges)} survivors and delete "
-                    f"{rows_removed} rows. Type 'yes' to proceed: ").strip().lower()
-    if confirm != "yes":
-        print("Aborted. No changes made.")
+    if not auto_merges:
+        print("\nNothing to merge.")
         return
+    print("\n--apply set. Performing auto-merges...")
+    if not args.yes:
+        confirm = input(f"This will patch {len(auto_merges)} survivors and delete "
+                        f"{rows_removed} rows. Proceed? [y/N]: ").strip().lower()
+        if confirm not in ("y", "yes"):
+            print(f"Aborted (got {confirm!r}). No changes made. "
+                  f"Re-run with --apply --yes to skip this question.")
+            return
 
     patched, deleted = apply_plan(url, key, auto_merges)
     print(f"\nDone. Survivors patched: {patched}. Rows deleted: {deleted}.")
-    print("Conflicts were left untouched. Resolve data/dedupe_review.csv by hand.")
+    print("Same-name businesses at different locations were left untouched, as intended.")
     print("\nNext: regenerate the static pages with "
           "`node generate-business-pages.js`, then commit and push.")
 

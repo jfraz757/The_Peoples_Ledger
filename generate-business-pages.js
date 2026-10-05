@@ -611,8 +611,12 @@ async function main() {
     // updates its mtime and, more to the point, git sees every file as modified: a run
     // that changed 623 businesses produced 649 modified files and a commit touching all
     // of them. Comparing first keeps the diff honest about what changed.
+    // Line endings are normalised before comparing: with core.autocrlf on Windows, git
+    // checks these files out with CRLF while this script writes LF, so a raw comparison
+    // called every page "changed" after any checkout and rewrote it -- resetting its
+    // sitemap lastmod to today for no real change.
     let existing = null;
-    try { existing = fs.readFileSync(dest, "utf8"); } catch { /* new file */ }
+    try { existing = fs.readFileSync(dest, "utf8").replace(/\r\n/g, "\n"); } catch { /* new file */ }
     if (existing === html) { unchanged++; continue; }
     fs.writeFileSync(dest, html, "utf8");
     written++;
@@ -620,10 +624,27 @@ async function main() {
   console.log(`  ${written} business page(s) written, ${unchanged} unchanged.`);
   if (skipped) console.log(`  ${skipped} records skipped (no business name).`);
 
+  // Remove pages for businesses that are no longer in the database (purged, merged by
+  // dedupe_live, deleted in admin). This script used to only ever add files, so a deleted
+  // business kept a live, indexed page -- and stayed in search results -- indefinitely.
+  // Removed pages are git-tracked, so `git checkout` brings one back if needed.
+  // Guard: if the fetch came back much smaller than the folder, something is wrong with
+  // the fetch, not with the folder, so remove nothing.
+  const current = new Set(businesses.filter(b => b._slug).map(b => `${b._slug}.html`));
+  const onDisk = fs.readdirSync(OUT_DIR).filter(f => f.endsWith(".html"));
+  const orphans = onDisk.filter(f => !current.has(f));
+  if (orphans.length && current.size < onDisk.length * 0.9) {
+    console.log(`  !! ${orphans.length} page(s) have no matching business, but only ${current.size} businesses ` +
+                `were fetched for ${onDisk.length} pages -- NOT removing anything. Check the fetch.`);
+  } else if (orphans.length) {
+    for (const f of orphans) fs.unlinkSync(path.join(OUT_DIR, f));
+    console.log(`  ${orphans.length} page(s) removed for businesses no longer in the database.`);
+  }
+
   const sitemap = buildSitemap(businesses.filter(b => b.business_name && b.business_name.trim()));
   const sitemapPath = path.join(OUT_DIR, "sitemap.xml");
   let oldSitemap = null;
-  try { oldSitemap = fs.readFileSync(sitemapPath, "utf8"); } catch { /* first run */ }
+  try { oldSitemap = fs.readFileSync(sitemapPath, "utf8").replace(/\r\n/g, "\n"); } catch { /* first run */ }
   if (oldSitemap === sitemap) {
     console.log("  sitemap.xml unchanged.");
   } else {
