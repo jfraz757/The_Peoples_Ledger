@@ -124,6 +124,19 @@ def clean(v):
     return "" if s.lower() in ("none", "n/a", "na", "null", "nan") else s
 
 
+def _html_table_to_csv(html):
+    """The first <table> in a B2GNow HTML export, as CSV text."""
+    from bs4 import BeautifulSoup
+    table = BeautifulSoup(html, "html.parser").find("table")
+    if table is None:
+        raise SystemExit("B2GNow .xls export contains no table.")
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    for tr in table.find_all("tr"):
+        w.writerow([c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])])
+    return buf.getvalue()
+
+
 def read_b2gnow(path):
     """Both B2GNow exports (HRC, KYTC) share one layout: a preamble, then the header.
 
@@ -140,6 +153,11 @@ def read_b2gnow(path):
             continue
     if text is None:
         text = raw.decode("cp1252", errors="replace")
+    # B2GNow's "Excel" export is an HTML table saved with an .xls extension (the October
+    # 2026 downloads came this way; July's were CSV). Same columns, so convert the table to
+    # CSV text and let the CSV path below handle the header search and duplicate columns.
+    if text.lstrip()[:1] == "<":
+        text = _html_table_to_csv(text)
     lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     hdr = next((i for i, l in enumerate(lines[:40]) if l.lstrip('"').startswith("Company Name")), None)
     if hdr is None:
@@ -188,8 +206,8 @@ def find_source_files():
     """Locate the staged exports. Newest file wins if a folder holds several."""
     found = {}
     for label, folder, ext in (
-        ("Louisville HRC", "Louisville_HRC", ".csv"),
-        ("KY Transportation", "KY_Transportation_Cabinet", ".csv"),
+        ("Louisville HRC", "Louisville_HRC", (".csv", ".xls")),
+        ("KY Transportation", "KY_Transportation_Cabinet", (".csv", ".xls")),
         ("KY Finance", "KY_Finance_&_Administration", (".xlsx", ".csv")),
     ):
         d = Path(SPREADSHEET_DIR) / folder
@@ -255,6 +273,22 @@ def load_certifiers():
 def fetch_live():
     return common.fetch_all(
         "id,business_name,website,minority_type,certification_type,address", key=SUPABASE_KEY)
+
+
+# Certifier names whose 85-93 fuzzy match to a live business was checked and found to be a
+# DIFFERENT business. Without this, a near-miss lands in the review CSV on every run and
+# is never inserted -- C. E. Scott & Associates (vs Mindel, Scott & Associates), Fresh
+# Enterprises (vs ESP), Hicks Enterprises (vs VIC) sat out of the directory from July to
+# October 2026 that way. One certifier company name per line, under a "certifier_name"
+# header; matched with match_key, so case and punctuation do not matter.
+CONFIRMED_DISTINCT_FILE = os.path.join(DATA_DIR, "cert_confirmed_distinct.csv")
+
+
+def load_confirmed_distinct():
+    if not os.path.exists(CONFIRMED_DISTINCT_FILE):
+        return set()
+    with open(CONFIRMED_DISTINCT_FILE, newline="", encoding="utf-8-sig") as f:
+        return {match_key(r.get("certifier_name", "")) for r in csv.DictReader(f)} - {""}
 
 
 def derive_minority_type(rec):
@@ -341,10 +375,14 @@ def main():
     choices = list(by_key.keys())
     print(f"Live directory: {len(live)} rows, {len(by_key)} distinct name keys\n")
 
+    distinct = load_confirmed_distinct()
     backfill, inserts, review = [], [], []
     for k, rec in recs.items():
         hit = by_key.get(k) or sites.get(norm_site(rec.get("website")))
         method = "exact" if hit else ""
+        if not hit and k in distinct:
+            inserts.append(rec)        # a human confirmed the near-miss is a different business
+            continue
         if not hit:
             m = process.extractOne(k, choices, scorer=fuzz.token_sort_ratio, score_cutoff=args.fuzzy)
             if m:

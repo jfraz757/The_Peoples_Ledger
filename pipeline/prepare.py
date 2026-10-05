@@ -110,6 +110,12 @@ CHAIN_BLOCKLIST = [
     "dwain taylor", "david taylor chrysler", "glockner", "identogo",
     "earthwise pet", "agave & rye", "uptown cheapskate", "keller williams",
     "el toro ip targeting",
+    # Franchise / multi-state chain locations declined in the July and October 2026
+    # reviews. Google's owner attribute was present on several, but the operator's call
+    # is that a franchise location is not what this directory lists.
+    "beltone", "liberty tax", "jackson hewitt", "shred nations", "purcell tire",
+    "fyda freightliner", "lice clinics of america", "made in the shade",
+    "home video studio", "mobility city", "medical waste pros", "re/max", "remax",
 ]
 
 US_STATES = ("al","ak","az","ar","ca","co","ct","de","fl","ga","hi","id","il",

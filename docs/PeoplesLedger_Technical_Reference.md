@@ -342,6 +342,8 @@ Cell 7 already encodes the two file-format traps: `encoding='cp1252'` and `skipr
 
 **Optional since `reconcile_certifications.py` exists (October 2026 note).** The reconcile reads the raw downloads directly — it locates the B2GNow header row itself, decodes cp1252, reads the KY Finance `.xlsx` with openpyxl, and takes the **newest** file in each folder by modification time. The July 2026 run used the raw `Directory_<date>_<id>.csv` exports un-renamed. So the routine is now just: drop the downloads into their folders (move the previous export into `archive/`), then `python pipeline/ledger.py certs`. Run the notebook only if you want the dtale look at the raw columns.
 
+**October 2026 run.** B2GNow's exports now arrive as `Directory_<date>.xls` — an HTML table with an `.xls` name, same columns as the CSV — and filtered to Kentucky only (HRC 216 rows, KYTC 187, KY Finance 540). The reconcile reads that format directly. Result: 28 backfills, 21 inserts, 0 duplicates. Near-miss names a human has confirmed are *different* businesses go in `data/cert_confirmed_distinct.csv` (`certifier_name` column); without that they land in the review CSV every run and are never inserted, which kept C. E. Scott & Associates, Fresh Enterprises, Hicks Enterprises and United Communications out of the directory from July to October.
+
 ### ✅ EXISTS — the reconcile: `pipeline/reconcile_certifications.py` (built July 2026)
 
 ```bash
