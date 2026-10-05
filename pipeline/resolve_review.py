@@ -42,8 +42,11 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT    = os.path.dirname(PIPELINE_DIR)
-DATA_DIR     = os.path.join(REPO_ROOT, "data")
+sys.path.insert(0, PIPELINE_DIR)
+import common  # noqa: E402
+
+REPO_ROOT    = common.REPO_ROOT
+DATA_DIR     = common.DATA_DIR
 PREP_FILE    = os.path.join(DATA_DIR, "businesses_prepared.csv")
 PAGE_CACHE   = os.path.join(DATA_DIR, "cache", "pages")   # same cache the scraper writes
 
@@ -97,24 +100,7 @@ def city_hint(url):
     return DOMAIN_CITY_HINT.get(domain_of(url), "")
 
 
-def load_env():
-    env_path = os.path.join(REPO_ROOT, ".env")
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(env_path)
-        return
-    except ImportError:
-        pass
-    if os.path.exists(env_path):
-        for line in open(env_path, encoding="utf-8"):
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-
-
-load_env()
-SERPAPI_KEY = os.getenv("SERPAPI_KEY")
+SERPAPI_KEY = common.env("SERPAPI_KEY")
 
 
 def domain_of(url):

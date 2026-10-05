@@ -32,7 +32,6 @@ CSVs written to data/:
 
 import argparse
 import csv
-import os
 import re
 import sys
 from datetime import datetime
@@ -254,71 +253,19 @@ def selftest():
 
 
 # ----------------------------------------------------------------------------
-# .env loading (no hard dependency on python-dotenv)
+# Credentials and reads (shared helpers in common.py)
 # ----------------------------------------------------------------------------
-def load_env():
-    env_path = REPO_ROOT / ".env"
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(env_path)
-        return
-    except ImportError:
-        pass
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-
-
 def get_credentials():
-    load_env()
-    url = os.environ.get("SUPABASE_URL")
-    # Accept the common names for the service-role key. This MUST be the
-    # service-role key (DELETE rights), not the publishable read key.
-    key = (os.environ.get("SUPABASE_SERVICE_KEY")
-           or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-           or os.environ.get("SUPABASE_SECRET_KEY"))
-    if not url or not key:
-        sys.exit(
-            "Missing credentials. Add to .env at the repo root:\n"
-            "  SUPABASE_URL=https://ursmecdpgtqckacyhnko.supabase.co\n"
-            "  SUPABASE_SERVICE_KEY=<your service-role key>\n"
-            "(The publishable/anon key cannot DELETE.)"
-        )
-    if "ursmecdpgtqckacyhnko" not in url:
-        sys.exit(f"Refusing to run: SUPABASE_URL is not the People's Ledger project.\n  got: {url}")
-    return url.rstrip("/"), key
+    # Imported here, not at module top: prepare.py imports this module for
+    # detect_state(), and that path must not need credentials.
+    sys.path.insert(0, str(SCRIPT_DIR))
+    import common
+    return common.require_service_credentials("deletes rows")
 
 
-# ----------------------------------------------------------------------------
-# Supabase I/O
-# ----------------------------------------------------------------------------
 def fetch_all(url, key):
-    import requests
-    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
-    rows, offset, page = [], 0, 1000
-    while True:
-        r = requests.get(
-            f"{url}/rest/v1/businesses",
-            headers=headers,
-            params={
-                "select": "id,business_name,address,kentucky_based",
-                "order": "id.asc",
-                "limit": page,
-                "offset": offset,
-            },
-            timeout=60,
-        )
-        r.raise_for_status()
-        batch = r.json()
-        rows.extend(batch)
-        if len(batch) < page:
-            break
-        offset += page
-    return rows
+    import common
+    return common.fetch_all("id,business_name,address,kentucky_based", key=key)
 
 
 def fetch_by_ids(url, key, ids):

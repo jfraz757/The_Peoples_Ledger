@@ -19,14 +19,12 @@ Minority_Biz_Database_Project/Old_KY_Biz_Spreadsheets/
 First_looks.ipynb
 *.ipynb_checkpoints/
 
-# Leftover downloads
-gitignore.txt
-
 # OS / editor noise
 .DS_Store
 Thumbs.db
 .vscode/
 __pycache__/
 *.pyc
-__pycache__/
-*.pyc
+
+# Local Claude Code settings (preview server config)
+.claude/

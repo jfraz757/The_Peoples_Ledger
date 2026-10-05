@@ -63,25 +63,14 @@ from pathlib import Path
 from rapidfuzz import fuzz, process
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(PIPELINE_DIR)
-DATA_DIR = os.path.join(REPO_ROOT, "data")
+sys.path.insert(0, PIPELINE_DIR)
+import common  # noqa: E402
+
+REPO_ROOT = common.REPO_ROOT
+DATA_DIR = common.DATA_DIR
 SPREADSHEET_DIR = os.path.join(REPO_ROOT, "Minority_Biz_Database_Project", "Spreadsheets")
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv(os.path.join(REPO_ROOT, ".env"))
-except ImportError:
-    pass
-
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-if not SUPABASE_KEY:
-    raise SystemExit(
-        "SUPABASE_SERVICE_ROLE_KEY missing from .env. This script writes to `businesses`, "
-        "which anon can no longer do (restrict_anon_grants.sql, July 2026)."
-    )
-if "ursmecdpgtqckacyhnko" not in SUPABASE_URL:
-    raise SystemExit(f"Refusing to run against an unexpected project: {SUPABASE_URL}")
+SUPABASE_URL, SUPABASE_KEY = common.require_service_credentials("writes to `businesses`")
 
 # Certifications that reflect WHO OWNS the business. SBE is intentionally absent.
 OWNERSHIP_CERTS = {"MBE", "WBE", "MWBE", "DBE", "VOSB", "SDVOSB", "DIBE", "LGBTBE"}
@@ -264,18 +253,8 @@ def load_certifiers():
 
 
 def fetch_live():
-    rows, off = [], 0
-    while True:
-        req = urllib.request.Request(
-            f"{SUPABASE_URL}/rest/v1/businesses?select=id,business_name,website,minority_type,"
-            f"certification_type,address&order=id.asc&limit=1000&offset={off}",
-            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"})
-        page = json.loads(urllib.request.urlopen(req, timeout=60).read())
-        rows += page
-        if len(page) < 1000:
-            break
-        off += 1000
-    return rows
+    return common.fetch_all(
+        "id,business_name,website,minority_type,certification_type,address", key=SUPABASE_KEY)
 
 
 def derive_minority_type(rec):

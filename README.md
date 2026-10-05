@@ -37,10 +37,13 @@ Businesses enter through two separate lanes that both end at the Supabase `busin
 
 ```
 Lane 1: Web discovery (quarterly)
-  scrape.py  ->  prepare.py  ->  [human review]  ->  upload  ->  enrich  ->  maintain  ->  SEO pages
+  scrape.py  ->  prepare.py  ->  resolve_review.py  ->  flag_review.py  ->  [human review]
+            ->  upload  ->  enrich  ->  SEO pages
 
 Lane 2: Certification spreadsheets (as agencies refresh)
-  manual download  ->  data_gather_.ipynb (convert/rename)  ->  reconcile_certifications.py  ->  businesses table
+  manual download  ->  reconcile_certifications.py  ->  businesses table
+
+Both are driven by one runner: python pipeline/ledger.py <verb>
 ```
 
 The live website reads from Supabase at runtime. It is a static site with no build step, so none of the Python tooling or working data is part of what gets deployed.
@@ -99,7 +102,7 @@ Everything lives in `pipeline/`. Scripts derive their data folder from their own
 
 ### Lane 1: Web discovery
 
-**`scrape.py`** is the web-discovery engine. It runs a SerpApi Google Maps phase that pulls structured name, address, phone, and website with no page fetch, keeping a Maps result only when Google's own self-identified ownership attribute is present and tagging it from that attribute. It then runs targeted organic and social searches across statewide Kentucky cities, fetches candidate pages, and extracts structured fields with Claude (`claude-haiku-4-5`). It caches HTML, Maps responses, and extractions to disk, resumes from a progress file, and skips businesses already in the directory. Output lands in `data/businesses_scraped.csv`.
+**`scrape.py`** is the web-discovery engine. It runs SerpApi Google Maps searches (18 ownership terms across 34 Kentucky cities) that return structured name, address, phone, and website with no page fetch, keeping a result only when Google's own self-identified ownership attribute is present and tagging it from that attribute. A second "web lane" (organic and social search, page fetches, extraction with Claude `claude-haiku-4-5`) still exists but is off by default: under the current publishing rule its rows are never uploaded, so it cost half the searches for nothing. It caches Maps responses, resumes from a progress file, and drops chains, out-of-state and already-listed businesses at intake. Output lands in `data/businesses_scraped.csv`.
 
 **`prepare.py`** turns a raw scrape into one reviewable file, `data/businesses_prepared.csv`, with a Disposition column: Good to go, Needs review, or Dropped. It filters out chains and out-of-state addresses, holds address-less names for human review, and deduplicates the keepers using field-level merge logic (most complete address wins, most specific ownership type wins, and so on). This replaces the earlier separate triage and cleaning steps.
 
@@ -107,13 +110,13 @@ Everything lives in `pipeline/`. Scripts derive their data folder from their own
 
 **`enrich.py`** runs two post-upload passes with Claude (`claude-sonnet-4-6`): it assigns an industry category, then writes a brief services description for records that lack one. Industry runs first because the services prompt uses it. Both passes skip records that already have the field, so re-running is safe.
 
-**`maintain.py`** re-checks every website and sets status to Active, Inactive, or No Website. With `--buyblack` it also resolves buyblack.org placeholder URLs to a real site or Instagram using SerpApi, which is gated behind the flag because it costs searches.
+**`maintain.py`** re-checks every website (16 at a time, failures re-checked once before being marked Inactive) and sets status to Active, Inactive, or No Website. With `--buyblack` it also resolves buyblack.org placeholder URLs to a real site or Instagram using SerpApi, which is gated behind the flag because it costs searches.
 
 **`view_database.py`** opens any `data/` CSV in D-Tale for spot-checks.
 
 ### Lane 2: Certification spreadsheets
 
-The Louisville HRC, Kentucky Transportation, and Kentucky Finance certification lists are CAPTCHA-protected manual downloads. They are the only source of the `certification_type` field, and they reach formally certified businesses that the web crawl never surfaces. They must not go through `prepare.py`, which would strip authoritative records as if they were noise. Instead they are reconciled against the live table with fuzzy matching, certification data is filled on matches, and genuinely new businesses are inserted. (`reconcile_certifications.py` is not built yet.)
+The Louisville HRC, Kentucky Transportation, and Kentucky Finance certification lists are CAPTCHA-protected manual downloads. They are the only source of the `certification_type` field, and they reach formally certified businesses that the web crawl never surfaces. They must not go through `prepare.py`, which would strip authoritative records as if they were noise. Instead `reconcile_certifications.py` reconciles them against the live table with fuzzy matching: certification data is filled on matches, and genuinely new businesses are inserted. It reads the raw downloads directly.
 
 ---
 
@@ -127,17 +130,18 @@ cd The_Peoples_Ledger
 
 **2. Install dependencies**
 ```
-pip install requests beautifulsoup4 pandas anthropic google-search-results python-dotenv supabase dtale
+pip install requests beautifulsoup4 pandas anthropic google-search-results python-dotenv supabase rapidfuzz openpyxl dtale
 ```
 
 **3. Configure API keys**
 
-Copy `.env.example` to `.env` in the repo root and fill in your keys:
+Copy `env.example` to `.env` in the repo root and fill in your keys:
 ```
 SERPAPI_KEY=your_serpapi_key_here
 ANTHROPIC_API_KEY=your_anthropic_key_here
 SUPABASE_URL=your_supabase_project_url
-SUPABASE_KEY=your_supabase_key
+SUPABASE_KEY=your_publishable_key            # read-only, same as index.html
+SUPABASE_SERVICE_ROLE_KEY=your_service_key   # writes; keep secret
 ```
 
 - SerpApi: [serpapi.com](https://serpapi.com), 100 free searches per month on the free tier
@@ -146,13 +150,11 @@ SUPABASE_KEY=your_supabase_key
 
 **4. Run lane 1, from the repo root**
 ```
-python pipeline/scrape.py
-python pipeline/prepare.py
+python pipeline/ledger.py new-cycle
+python pipeline/ledger.py scrape
+python pipeline/ledger.py prep        # stops for your review
 # review data/businesses_prepared.csv, flip keepers to "Good to go"
-python pipeline/upload_to_supabase.py
-python pipeline/enrich.py
-python pipeline/maintain.py
-node generate-business-pages.js
+python pipeline/ledger.py publish     # upload + enrich + regenerate pages
 ```
 
 **5. Open the directory**
@@ -167,7 +169,7 @@ Open `admin.html` locally. It is gitignored and never pushed to GitHub.
 
 ## Cost Estimate
 
-`scrape.py` extracts with Claude Haiku and pulls a large share of records from the Maps phase with no Claude call at all, so per-run extraction cost is low. `enrich.py` uses Claude Sonnet and runs roughly $0.75 to $1.00 per 1,000 records categorized. SerpApi's free tier of 100 searches per month covers light use; a full statewide scrape is larger and needs a paid plan. The scraper prints its projected search count before spending anything.
+A full quarterly scrape is 612 SerpApi searches and makes no Claude calls (the Maps results are already structured). SerpApi's free tier of 100 searches per month covers everything else in the pipeline, so a paid plan is only needed for the month you scrape. `enrich.py` uses Claude Sonnet and runs roughly $0.75 to $1.00 per 1,000 records categorized. The scraper prints its projected search count before spending anything.
 
 ---
 
@@ -175,14 +177,16 @@ Open `admin.html` locally. It is gitignored and never pushed to GitHub.
 
 | Task | Command | Frequency |
 |---|---|---|
-| Add new businesses | `python pipeline/scrape.py` | Quarterly |
-| Prepare (filter and dedupe) | `python pipeline/prepare.py` | After each scrape |
-| Upload approved rows | `python pipeline/upload_to_supabase.py` | After review |
-| Enrich (industry and services) | `python pipeline/enrich.py` | After upload |
-| Regenerate SEO pages | `node generate-business-pages.js` | After upload (quarterly) |
-| Refresh link statuses | `python pipeline/maintain.py` | Monthly |
+| Refresh link statuses | `python pipeline/ledger.py links` | Monthly |
+| Start a new cycle | `python pipeline/ledger.py new-cycle` | Quarterly |
+| Add new businesses | `python pipeline/ledger.py scrape` | Quarterly |
+| Prepare, auto-settle, flag | `python pipeline/ledger.py prep` | After each scrape |
+| Upload, enrich, regenerate pages | `python pipeline/ledger.py publish` | After review |
+| Reconcile certification lists | `python pipeline/ledger.py certs` (dry run), then `reconcile_certifications.py --apply [--insert-new]` | Quarterly / as agencies refresh |
+| Publish approved submissions | `python pipeline/ledger.py publish-submissions` | After admin.html approvals |
 | Fix buyblack URLs | `python pipeline/maintain.py --buyblack` | As needed |
-| Reconcile certification lists | Intake via `Minority_Biz_Database_Project/data_gather_.ipynb` (cells 2 and 4), then `python pipeline/reconcile_certifications.py` (dry-run default; `--apply`, `--insert-new`) | As agencies refresh |
+
+Step-by-step: `docs/maintenance_checklist.md`.
 
 ---
 

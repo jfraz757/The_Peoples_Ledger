@@ -2,74 +2,81 @@
 
 **Supabase project:** `ursmecdpgtqckacyhnko`
 **Local repo:** `C:\Users\jfraz\The_Peoples_Ledger`
-**Python:** `C:/Users/jfraz/AppData/Local/Python/pythoncore-3.14-64/python.exe`
+**Python:** `C:\Python314\python.exe`
 
-> All scripts now live in `pipeline/` and derive their own paths, so run everything from the repo root in Git Bash.
+> Run everything from the repo root through the runner, `pipeline/ledger.py`. It works the
+> same from PowerShell (`py pipeline\ledger.py <verb>`) and Git Bash
+> (`python pipeline/ledger.py <verb>`), and uses whichever Python launched it -- so a
+> moved Python install cannot silently break it the way it broke the old `.sh` wrappers.
+> `python pipeline/ledger.py` with no verb prints the list.
 
 ---
 
-## Monthly (run every month)
+## Monthly
 
 ```bash
-bash docs/monthly_link_check.sh
+python pipeline/ledger.py links
 ```
 
-| Script | What it does | Cost |
-|---|---|---|
-| `pipeline/maintain.py` | Re-checks all website URLs, updates the `status` field (Active / Inactive / No Website) | Free |
+Re-checks every business website and updates `status` (Active / Inactive / No Website).
+Free. Checks 16 sites at a time, re-checks any failure once before calling it Inactive,
+and writes only the statuses that changed. If any changed, regenerate and push the pages
+(the runner prints the commands).
 
-`maintain.py` can also fix buyblack.org placeholder URLs, but only when you pass `--buyblack`, which spends SerpApi. The monthly run does not pass it.
+`maintain.py --buyblack` also fixes buyblack.org placeholder URLs, but it spends SerpApi,
+so the monthly run does not do it.
 
 ---
 
-## Quarterly (run ~4x per year)
+## Quarterly (~4x per year)
 
-### Step 0: Manual downloads first (CAPTCHA-protected, must do by hand)
+### SerpApi: pay for one month only
+
+The quarterly scrape is the only step that needs more than SerpApi's free 100
+searches/month: a full run is **612 searches** (18 terms x 34 cities, Google Maps only).
+Subscribe for the month you scrape, set `SERPAPI_HOURLY_LIMIT` in `pipeline/scrape.py`
+to that plan's hourly cap, and drop back to the free tier afterwards. If the quota runs
+out mid-run, the scrape halts cleanly and resumes where it stopped.
+
+### Step 0: Manual downloads (CAPTCHA-protected, must do by hand)
 
 - [ ] **Louisville HRC CSV** from diversitycompliance.com
   - Still includes `Ethnicity` and `Certification Type` fields as of June 2026
   - Your most reliable source for certified businesses
 - [ ] **KY Transportation Cabinet** B2GNow portal export
   - Note: minority type fields removed from export as of 2026 (anti-DEI legislation)
-- [ ] **KY Finance & Administration Cabinet** MWBE listing `.xlsx`, convert to CSV
+- [ ] **KY Finance & Administration Cabinet** MWBE listing `.xlsx` (no need to convert it)
   - Same note: minority type fields no longer included
 
-Then run:
+Put each file in its folder under `Minority_Biz_Database_Project/Spreadsheets/` and move
+the previous export into that folder's `archive/`. The reconcile reads the raw downloads
+directly, so the notebook's convert/rename cells are optional.
+
+### Steps, in order
 
 ```bash
-bash docs/quarterly_refresh.sh
+python pipeline/ledger.py new-cycle   # 1. archive last cycle's progress + output
+python pipeline/ledger.py scrape      # 2. SerpApi Google Maps discovery
+python pipeline/ledger.py prep        # 3. prepare + resolve_review + flag_review, then STOP
+#    4. review data/businesses_prepared.csv (filter Disposition = 'Needs review')
+python pipeline/ledger.py publish     # 5. upload + enrich + regenerate pages
+python pipeline/ledger.py certs       # 6. Lane 2 dry run against the new downloads
+python pipeline/ledger.py maintain    # 7. dry-run health checks of the live table
 ```
 
-### Pipeline order (the script runs these in sequence)
+| Step | What it does | Cost |
+|---|---|---|
+| new-cycle | Records your manual drops, moves `scraper_progress.json` and the old scrape/prepare files into `data/archive/<timestamp>_cycle/`. Skip it and the scraper treats last quarter as finished and finds nothing. | Free |
+| scrape | Lane 1 discovery. Keeps only results carrying Google's owner-set ownership attribute. Drops chains, out-of-state and already-listed businesses at intake. | 612 SerpApi searches |
+| prep | Dispositions every row (Good to go / Needs review / Dropped), looks up real websites and addresses for the address-less rows, and moves anything flagged (national brand, likely duplicate, out of state) into Needs review. | A few SerpApi searches |
+| review | You. Set keepers to "Good to go", the rest to "Dropped". Dropped rows are remembered automatically. | -- |
+| publish | Inserts the Good to go rows, fills industry + services with Claude, regenerates the static pages. | ~$1 per 1,000 records |
+| certs | Dry run: how many certifications would be backfilled, how many certified businesses would be added. Then `reconcile_certifications.py --apply [--insert-new]`. | Free |
+| maintain | Reports stray N/A addresses, out-of-state rows and duplicates. Nothing changes until you run the individual script with `--apply`. | Free |
 
-| Step | Script | What it does | Cost |
-|---|---|---|---|
-| 1 | `pipeline/scrape.py` | Lane 1 web discovery (Google Maps, listicles, social) | ~$9/1000 records |
-| 2 | `pipeline/prepare.py` | Filter + dedupe the scrape into one dispositioned CSV (Good to go / Needs review / Dropped) | Free |
-| 3 | `pipeline/upload_to_supabase.py` | Insert the "Good to go" rows into the businesses table in batches of 100 | Free |
-| 4 | `pipeline/enrich.py` | Assign industry, then fill missing service descriptions, via Claude API | ~$0.75-$1.00/1000 records |
-| 5 | `pipeline/clean_addresses.py --apply` | Strip stray "N/A" tokens from addresses so real KY rows are not mis-flagged (backs up every change) | Free |
-| 6 | `pipeline/purge_out_of_state.py` | DRY RUN: report out-of-state rows and write the delete/review CSVs (nothing is deleted) | Free |
+### Finish
 
-Steps 5 and 6 are the interim out-of-state safeguard. Lane 1 scraping is not yet state-gated at intake, so a fresh scrape can pull in businesses from neighboring states (Indiana, Ohio). Until a state filter is added to `prepare.py`, this quarterly cleanup is what keeps them out. See the Change Log in the Technical Reference for the durable fix.
-
-### After quarterly refresh: review, purge, finish
-
-- [ ] Review any script errors before closing Git Bash
-- [ ] Open `data/out_of_state_to_delete_<ts>.csv` and `data/out_of_state_review_<ts>.csv` from step 6. Confirm the delete list is genuinely out-of-state, and that nothing flagged `kentucky_based='Yes'` is a real KY business.
-- [ ] Apply the purge once the dry run looks right:
-  ```bash
-  python pipeline/purge_out_of_state.py --apply
-  ```
-- [ ] If a few genuinely out-of-state rows landed in the review CSV, delete those exact ids:
-  ```bash
-  python pipeline/purge_out_of_state.py --delete-from data/out_of_state_review_<ts>.csv   # dry run
-  # then add --apply once it looks right
-  ```
-- [ ] Regenerate the static SEO pages and sitemap against the trimmed table:
-  ```bash
-  node generate-business-pages.js
-  ```
+- [ ] Apply any health-check fixes you agree with (`--apply` on the individual script), then `node generate-business-pages.js`
 - [ ] Spot-check new records in the Supabase dashboard
 - [ ] If any **new industry categories** were added, update the hardcoded industry pills in `index.html`
 - [ ] Update the record count in `README.md` and Section 1 of the Technical Reference
@@ -77,10 +84,10 @@ Steps 5 and 6 are the interim out-of-state safeguard. Lane 1 scraping is not yet
   ```bash
   python -m http.server 8080   # open a business page, check the F12 console
   git add -A
-  git commit -m "Quarterly refresh; remove out-of-state businesses"
+  git commit -m "Quarterly refresh"
   git push
   ```
-- [ ] Run `monthly_link_check.sh` if not already done this month
+- [ ] Cancel or downgrade the SerpApi plan
 
 ---
 
@@ -92,9 +99,8 @@ text the submitter typed (often blank or thin). Run this after any batch of
 approvals so new submissions are actually discoverable:
 
 ```bash
-python pipeline/ledger.py enrich-new      # or: python pipeline/enrich_submissions.py
-node generate-business-pages.js
-git add -A && git commit -m "Publish new submissions" && git push
+python pipeline/ledger.py publish-submissions   # enrich + regenerate pages + commit
+git push
 ```
 
 `enrich_submissions.py` only looks at submissions approved since its last run
@@ -113,10 +119,11 @@ Claude — cheaper than a full-table `enrich.py` pass and safe to re-run anytime
 | `pipeline/clean_addresses.py` | Anytime addresses show stray "N/A" tokens (dry-run default; `--apply` to write) | Free |
 | `pipeline/purge_out_of_state.py` | Remove out-of-state rows on demand; `--delete-from <csv>` deletes a reviewed id list | Free |
 | `pipeline/discover_categories.py` | Lane 1b: surface immigrant/ethnic retail the main scraper misses. See the section below. | SerpApi |
-| `pipeline/dedupe_live.py` | Merge duplicate rows on the live table | Free |
+| `pipeline/dedupe_live.py` | Merge duplicate rows on the live table (dry run default; `--apply`) | Free |
 | `pipeline/maintain.py --buyblack` | When you spot buyblack.org placeholder URLs in the directory | SerpApi |
 | `pipeline/view_database.py` | Local exploration of a `data/` CSV in D-Tale | Free |
-| `pipeline/reconcile_certifications.py` | Lane 2 certification spreadsheets (HRC, KY Transportation, KY Finance). Not yet built. | Free |
+| `backup_supabase.py --prune` | Report backups outside retention (14 days + one per month); add `--yes` to remove them | Free |
+| `pipeline/reconcile_certifications.py` | Lane 2 certification spreadsheets (HRC, KY Transportation, KY Finance). `ledger.py certs` runs the dry run. | Free |
 
 ---
 
@@ -163,14 +170,13 @@ python pipeline/upload_to_supabase.py             # 6. uploads only "Good to go"
 
 ## Routine batch (the simple path)
 
-Use the runner instead of remembering the individual scripts:
+The quarterly steps above are the routine path. In short:
 
 ```bash
-python pipeline/ledger.py prep       # prepare + resolve_review, then stops for your review
-#   review data/businesses_prepared.csv (filter 'Needs review'); keep good, drop rest
-python pipeline/prepare.py --commit-drops   # remember your drops so they never return
-python pipeline/ledger.py publish    # upload + enrich (industries, then services)
-python pipeline/ledger.py maintain   # dry-run health checks of the live table
+python pipeline/ledger.py new-cycle
+python pipeline/ledger.py scrape
+python pipeline/ledger.py prep       # stops for your review
+python pipeline/ledger.py publish
 ```
 
-`prep` now does the heavy weeding for you: drops chains, out-of-state, already-live (skip-known), and denylisted rows; collapses near-duplicate names before you see them; and `resolve_review` settles the no-address rows by finding each business's real website (even when the listed link is a listicle) and reading the address. Full map in `docs/order_of_operations.md`.
+Full map in `docs/order_of_operations.md`.

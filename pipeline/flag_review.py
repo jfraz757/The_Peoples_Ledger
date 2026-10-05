@@ -32,20 +32,20 @@ NOTE: prepare.py rebuilds businesses_prepared.csv from OUTPUT_COLUMNS and will d
 """
 
 import argparse
-import json
 import os
 import re
 import sys
-import urllib.request
 from collections import Counter
 
 import pandas as pd
 from rapidfuzz import fuzz, process
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(PIPELINE_DIR)
-PREP_FILE = os.path.join(REPO_ROOT, "data", "businesses_prepared.csv")
-SOURCES_FILE = os.path.join(REPO_ROOT, "data", "businesses_scraped_sources.csv")
+sys.path.insert(0, PIPELINE_DIR)
+import common  # noqa: E402
+
+PREP_FILE = os.path.join(common.DATA_DIR, "businesses_prepared.csv")
+SOURCES_FILE = os.path.join(common.DATA_DIR, "businesses_scraped_sources.csv")
 
 # Flags serious enough that the row must not upload without a human looking at it.
 # These MOVE the row to "Needs review"; everything else is advisory only.
@@ -60,14 +60,6 @@ SOURCES_FILE = os.path.join(REPO_ROOT, "data", "businesses_scraped_sources.csv")
 PROMOTE_TO_REVIEW = ("national brand", "OUT OF STATE", "no Kentucky signal",
                      "ALREADY LIVE", "UNVERIFIED OWNERSHIP")
 
-# Needed for the live-duplicate check. Read-only: this script never writes to Supabase.
-try:
-    from dotenv import load_dotenv
-    load_dotenv(os.path.join(REPO_ROOT, ".env"))
-except ImportError:
-    pass
-
-sys.path.insert(0, PIPELINE_DIR)
 from prepare import addr_state  # noqa: E402  (shared resolver -- see prepare.addr_state)
 
 # National brands confirmed present in the July 2026 run. These are franchise or
@@ -101,26 +93,15 @@ def fetch_live_names():
     counties, genuinely different organizations. No threshold separates them, so
     a human has to look.
     """
-    url = os.getenv("SUPABASE_URL", "")
-    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_KEY", "")
-    if not url or not key:
+    # Read-only: the publishable key is enough, and this script never writes to Supabase.
+    if not (common.supabase_url() and common.publishable_key()):
         return None
-    names, offset = [], 0
     try:
-        while True:
-            req = urllib.request.Request(
-                f"{url}/rest/v1/businesses?select=business_name&order=id.asc"
-                f"&limit=1000&offset={offset}",
-                headers={"apikey": key, "Authorization": f"Bearer {key}"})
-            page = json.loads(urllib.request.urlopen(req, timeout=30).read())
-            names += [b["business_name"] for b in page if b.get("business_name")]
-            if len(page) < 1000:
-                break
-            offset += 1000
+        rows = common.fetch_all("business_name")
     except Exception as e:
         print(f"  [live-duplicate check off: {e}]")
         return None
-    return names
+    return [b["business_name"] for b in rows if b.get("business_name")]
 
 
 # "Minority-Owned (general)" is not a category. It is what the extractor emits when it

@@ -46,30 +46,28 @@ Do not "fix" a permission error here by re-granting anon write access. That reop
 """
 
 import os
+import sys
 import time
 import argparse
 import anthropic
-from dotenv import load_dotenv
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(PIPELINE_DIR)
-load_dotenv(os.path.join(REPO_ROOT, ".env"))
+sys.path.insert(0, PIPELINE_DIR)
+import common  # noqa: E402
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
 # Writes require the service role key. Named explicitly rather than reusing SUPABASE_KEY,
 # which is ambiguous: .env has historically defined SUPABASE_KEY twice (once secret, once
 # publishable) and dotenv silently keeps the LAST one, so scripts were picking up whichever
 # happened to be lower in the file.
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
+SUPABASE_URL, SUPABASE_KEY = common.require_service_credentials("writes to `businesses`")
+ANTHROPIC_KEY = common.env("ANTHROPIC_API_KEY")
 
-if not SUPABASE_KEY:
-    raise SystemExit(
-        "SUPABASE_SERVICE_ROLE_KEY is missing from .env. This script writes to `businesses`, "
-        "which anon can no longer do. Do not substitute the publishable key."
-    )
 MODEL = "claude-sonnet-4-6"
-SLEEP = 1.2
+# Pause between calls. This was 1.2 s, added on every row whether or not a rate limit was
+# near -- ~25 minutes of idle time on a 1,240-call run. The SDK retries 429s and 5xx with
+# backoff on its own (max_retries below), so a short pause is enough.
+SLEEP = 0.2
+MAX_RETRIES = 6
 MIN_SERVICES_LEN = 25  # services text shorter than this is treated as "thin"
 
 CATEGORIES = [
@@ -175,22 +173,12 @@ def infer_services(client, name, industry, address, existing):
 
 # --- supabase access ---------------------------------------------------------
 def fetch_all_rows(supabase, select):
-    out, offset = [], 0
-    while True:
-        batch = (supabase.table("businesses").select(select)
-                 .range(offset, offset + 999).execute())
-        if not batch.data:
-            break
-        out.extend(batch.data)
-        if len(batch.data) < 1000:
-            break
-        offset += 1000
-    return out
+    return common.fetch_all(select, key=SUPABASE_KEY)
 
 
 def fetch_in_buckets(supabase, buckets):
     return (supabase.table("businesses")
-            .select("id, business_name, services_products, industry")
+            .select("id, business_name, services_products, industry, address")
             .in_("industry", buckets).execute().data)
 
 
@@ -285,13 +273,9 @@ def run_reenrich_services(supabase, claude, buckets, dry_run, limit):
     regardless of current length, so each description leads with the plain
     searchable business type (e.g. 'grocery store'). Existing facts are kept;
     this exists to make long-but-unsearchable descriptions findable."""
+    # fetch_in_buckets includes address, so there is no need to download the whole
+    # table again just to get it (which is what this used to do).
     rows = fetch_in_buckets(supabase, buckets)
-    # fetch_in_buckets selects a limited column set; pull address too
-    ids = [r["id"] for r in rows]
-    full = {r["id"]: r for r in fetch_all_rows(
-        supabase, "id, business_name, industry, address, services_products")
-        if r["id"] in set(ids)}
-    rows = [full[i] for i in ids if i in full]
     if limit:
         rows = rows[:limit]
     print(f"\n[Re-enrich services] rewriting {len(rows)} rows in {buckets}"
@@ -406,7 +390,7 @@ def main():
     from supabase import create_client  # imported here so tests need no network
     print("Connecting to Supabase...")
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    claude = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+    claude = anthropic.Anthropic(api_key=ANTHROPIC_KEY, max_retries=MAX_RETRIES)
 
     if do_ind:
         run_industries(supabase, claude, args.dry_run, args.limit)

@@ -35,6 +35,7 @@ import pandas as pd
 # script is run from the repo root or from pipeline/.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from purge_out_of_state import detect_state  # noqa: E402
+import common  # noqa: E402
 
 # Fuzzy name matching for the pre-review dedup. rapidfuzz is installed globally
 # (dedupe_live.py uses it); fall back to difflib if it is ever missing.
@@ -49,9 +50,9 @@ except Exception:
         return 100 * difflib.SequenceMatcher(None, sa, sb).ratio()
 
 # Portable paths: data/ sits next to the pipeline/ folder this script lives in.
-PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT    = os.path.dirname(PIPELINE_DIR)
-DATA_DIR     = os.path.join(REPO_ROOT, "data")
+PIPELINE_DIR = common.PIPELINE_DIR
+REPO_ROOT    = common.REPO_ROOT
+DATA_DIR     = common.DATA_DIR
 
 INPUT_FILE   = os.path.join(DATA_DIR, "businesses_scraped.csv")
 SOURCES_FILE = os.path.join(DATA_DIR, "businesses_scraped_sources.csv")
@@ -213,69 +214,28 @@ def _norm_site(url):
     return u.rstrip("/")
 
 
-def _load_env():
-    """Populate os.environ from REPO_ROOT/.env without requiring python-dotenv."""
-    path = os.path.join(REPO_ROOT, ".env")
-    if not os.path.exists(path):
-        return
-    try:
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-    except Exception as e:
-        print(f"  [could not read .env: {e}]")
-
-
 def fetch_live_identity():
     """Return (live_names, live_sites) as sets of normalized keys for every row in
     the live businesses table, or (None, None) if it cannot be fetched."""
-    _load_env()
-    url = os.getenv("SUPABASE_URL", "")
-    key = os.getenv("SUPABASE_KEY", "")
-    if not url or not key:
+    if not (common.supabase_url() and common.publishable_key()):
         print("  [skip-known off: SUPABASE_URL/SUPABASE_KEY not in .env]")
         return None, None
     try:
-        import requests
-    except Exception:
-        print("  [skip-known off: requests not installed]")
-        return None, None
-
-    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
-    names, sites = set(), set()
-    offset, page = 0, 1000
-    try:
-        while True:
-            r = requests.get(
-                f"{url}/rest/v1/businesses",
-                headers=headers,
-                params={"select": "business_name,website", "limit": page, "offset": offset},
-                timeout=60,
-            )
-            r.raise_for_status()
-            batch = r.json()
-            if not batch:
-                break
-            for row in batch:
-                # _dedup_name, not _norm_name: the scraped side is compared with the
-                # same key, so "Braxton Brewing Co." matches a live "Braxton Brewing
-                # Company" and does not upload as a duplicate.
-                nm = _dedup_name(row.get("business_name"))
-                st = _norm_site(row.get("website"))
-                if nm:
-                    names.add(nm)
-                if st:
-                    sites.add(st)
-            if len(batch) < page:
-                break
-            offset += page
+        rows = common.fetch_all("business_name,website")
     except Exception as e:
         print(f"  [skip-known off: could not read live directory: {e}]")
         return None, None
+    names, sites = set(), set()
+    for row in rows:
+        # _dedup_name, not _norm_name: the scraped side is compared with the
+        # same key, so "Braxton Brewing Co." matches a live "Braxton Brewing
+        # Company" and does not upload as a duplicate.
+        nm = _dedup_name(row.get("business_name"))
+        st = _norm_site(row.get("website"))
+        if nm:
+            names.add(nm)
+        if st:
+            sites.add(st)
     print(f"  Loaded {len(names)} live business names for skip-known.")
     return names, sites
 

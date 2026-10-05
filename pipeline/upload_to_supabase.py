@@ -22,29 +22,19 @@ Usage:
 """
 
 import os
+import sys
 import math
-import shutil
-from datetime import datetime
 import pandas as pd
 from supabase import create_client
-from dotenv import load_dotenv
 
 # Portable paths: data/ sits next to the pipeline/ folder this script lives in.
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT    = os.path.dirname(PIPELINE_DIR)
-DATA_DIR     = os.path.join(REPO_ROOT, "data")
+sys.path.insert(0, PIPELINE_DIR)
+import common  # noqa: E402
 
-load_dotenv(os.path.join(REPO_ROOT, ".env"))
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+DATA_DIR     = common.DATA_DIR
+SUPABASE_URL, SUPABASE_KEY = common.require_service_credentials("inserts into `businesses`")
 CSV_PATH     = os.path.join(DATA_DIR, "businesses_prepared.csv")
-
-if not SUPABASE_KEY:
-    raise SystemExit(
-        "SUPABASE_SERVICE_ROLE_KEY is missing from .env. This script inserts into `businesses`, "
-        "which anon can no longer do. Do not substitute the publishable key."
-    )
 BATCH_SIZE   = 100
 
 DB_RENAME = {
@@ -106,8 +96,7 @@ def main():
 
     print(f"\nDone. {uploaded} records loaded into Supabase.")
     archive_scrape_files(uploaded)
-    print("\nNext: python pipeline/enrich.py  ->  python pipeline/maintain.py  ->  "
-          "node generate-business-pages.js")
+    print("\nNext: python pipeline/enrich.py  ->  node generate-business-pages.js")
 
 
 def archive_scrape_files(uploaded):
@@ -120,28 +109,25 @@ def archive_scrape_files(uploaded):
     in PREVIOUS cycles.
 
     Archived rather than deleted: the scrape is the audit trail for how a business was
-    found, and re-running the scraper does not reproduce a deleted file. The progress
-    file is deliberately LEFT ALONE -- it records which SerpApi searches have been paid
-    for, and losing it means paying for them again.
+    found. The progress file is LEFT ALONE here -- if this upload was a partial batch
+    mid-cycle, the scraper still needs it to resume without paying for searches again.
+    `ledger.py new-cycle` archives it when a new quarterly cycle starts.
     """
     if not uploaded:
         print("  (nothing uploaded, scrape files left in place)")
         return
-    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    archive_dir = os.path.join(DATA_DIR, "archive", stamp)
-    moved = []
-    for name in ("businesses_scraped.csv", "businesses_scraped_checkpoint.csv",
-                 "businesses_scraped_sources.csv", "businesses_prepared.csv"):
-        src = os.path.join(DATA_DIR, name)
-        if os.path.exists(src):
-            os.makedirs(archive_dir, exist_ok=True)
-            shutil.move(src, os.path.join(archive_dir, name))
-            moved.append(name)
+    # Record manual rejections BEFORE the prepared file moves. prepare.py harvests them
+    # from the previous businesses_prepared.csv at the start of its next run -- but once
+    # this function archived that file, there was nothing left to harvest, so every
+    # review pass that ended in an upload lost its drops and they came back next cycle.
+    import prepare
+    prepare.commit_drops(explicit=False)
+    consumed = [n for n in common.CYCLE_FILES if n != "scraper_progress.json"]
+    archive_dir, moved = common.archive_files(consumed, "uploaded")
     if moved:
-        print(f"  Archived {len(moved)} consumed file(s) -> data/archive/{stamp}/")
+        print(f"  Archived {len(moved)} consumed file(s) -> {os.path.relpath(archive_dir, common.REPO_ROOT)}")
         print(f"    {', '.join(moved)}")
         print("  The next prepare.py will see only NEW scrape output.")
-        print("  scraper_progress.json kept: it records already-paid SerpApi searches.")
 
 
 if __name__ == "__main__":

@@ -26,7 +26,6 @@ Run this BEFORE re-running purge_out_of_state.py.
 
 import argparse
 import csv
-import os
 import re
 import sys
 from datetime import datetime
@@ -90,62 +89,18 @@ def selftest():
 
 
 # ----------------------------------------------------------------------------
-# .env / credentials (same as purge_out_of_state.py)
+# Credentials and reads (shared helpers in common.py)
 # ----------------------------------------------------------------------------
-def load_env():
-    env_path = REPO_ROOT / ".env"
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(env_path)
-        return
-    except ImportError:
-        pass
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+sys.path.insert(0, str(SCRIPT_DIR))
+import common  # noqa: E402
 
 
 def get_credentials():
-    load_env()
-    url = os.environ.get("SUPABASE_URL")
-    key = (os.environ.get("SUPABASE_SERVICE_KEY")
-           or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-           or os.environ.get("SUPABASE_SECRET_KEY"))
-    if not url or not key:
-        sys.exit(
-            "Missing credentials. Add to .env at the repo root:\n"
-            "  SUPABASE_URL=https://ursmecdpgtqckacyhnko.supabase.co\n"
-            "  SUPABASE_SERVICE_KEY=<your service-role key>\n"
-            "(The publishable/anon key cannot UPDATE.)"
-        )
-    if "ursmecdpgtqckacyhnko" not in url:
-        sys.exit(f"Refusing to run: SUPABASE_URL is not the People's Ledger project.\n  got: {url}")
-    return url.rstrip("/"), key
+    return common.require_service_credentials("updates addresses")
 
 
 def fetch_all(url, key):
-    import requests
-    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
-    rows, offset, page = [], 0, 1000
-    while True:
-        r = requests.get(
-            f"{url}/rest/v1/businesses",
-            headers=headers,
-            params={"select": "id,business_name,address", "order": "id.asc",
-                    "limit": page, "offset": offset},
-            timeout=60,
-        )
-        r.raise_for_status()
-        batch = r.json()
-        rows.extend(batch)
-        if len(batch) < page:
-            break
-        offset += page
-    return rows
+    return common.fetch_all("id,business_name,address", key=key)
 
 
 def patch_address(url, key, biz_id, new_value):

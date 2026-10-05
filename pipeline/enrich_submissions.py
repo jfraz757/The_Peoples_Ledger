@@ -48,28 +48,20 @@ import json
 import time
 import argparse
 import anthropic
-from dotenv import load_dotenv
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(PIPELINE_DIR)
-DATA_DIR = os.path.join(REPO_ROOT, "data")
+sys.path.insert(0, PIPELINE_DIR)
+import common  # noqa: E402
+import enrich  # noqa: E402  reuse classify_industry, infer_services, is_blank, etc.
+
+DATA_DIR = common.DATA_DIR
 STATE_PATH = os.path.join(DATA_DIR, ".enrich_submissions_state.json")
 
-sys.path.insert(0, PIPELINE_DIR)
-import enrich  # reuse classify_industry, infer_services, is_blank, etc.
-
-load_dotenv(os.path.join(REPO_ROOT, ".env"))
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-# Service role required -- see module docstring. Named explicitly because .env has
-# historically defined SUPABASE_KEY twice and dotenv keeps only the last occurrence.
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
-
-if not SUPABASE_KEY:
-    raise SystemExit(
-        "SUPABASE_SERVICE_ROLE_KEY is missing from .env. This script reads `submissions` and "
-        "writes `businesses`; anon can do neither. Do not substitute the publishable key."
-    )
+# Service role required -- see module docstring. anon can neither read `submissions`
+# nor write `businesses`.
+SUPABASE_URL, SUPABASE_KEY = common.require_service_credentials(
+    "reads `submissions` and writes `businesses`")
+ANTHROPIC_KEY = common.env("ANTHROPIC_API_KEY")
 
 
 # --- watermark -----------------------------------------------------------
@@ -125,7 +117,7 @@ def main():
     print("Connecting to Supabase...")
     from supabase import create_client
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    claude = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+    claude = anthropic.Anthropic(api_key=ANTHROPIC_KEY, max_retries=enrich.MAX_RETRIES)
 
     subs = fetch_new_approved_submissions(supabase, since)
     if args.limit:

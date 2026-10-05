@@ -6,106 +6,89 @@ are a safety net, not part of the review prep. Three scripts you may have
 expected to run pre-review (`clean_addresses.py`, `purge_out_of_state.py`,
 `dedupe_live.py`) cannot, because they operate on uploaded Supabase rows.
 
-Run everything from the repo root in Git Bash.
+Run everything from the repo root through `pipeline/ledger.py`. Each verb below is
+listed with the scripts it runs, so you can still run a step on its own.
 
 ---
 
 ## Phase 1: build a clean review pile (CSV, before you look at anything)
 
+### 0. Start the cycle
+```bash
+python pipeline/ledger.py new-cycle
+```
+Records the manual drops from last cycle's `businesses_prepared.csv`, then moves
+`scraper_progress.json` and the old scrape/prepare files into
+`data/archive/<timestamp>_cycle/`. Without this the scraper resumes the FINISHED cycle:
+every search is already marked done, so it spends nothing and finds nothing.
+
 ### 1. Gather
 ```bash
-python pipeline/scrape.py                       # main lane (when refreshing)
-python pipeline/discover_categories.py          # Lane 1b (when expanding ethnic retail)
-python pipeline/discover_categories.py --triage # label + sort the category review file
+python pipeline/ledger.py scrape                 # scrape.py -- main lane, Google Maps
+python pipeline/discover_categories.py           # Lane 1b (when expanding ethnic retail)
+python pipeline/discover_categories.py --triage  # label + sort the category review file
 #   work category_review.csv, then:
 python pipeline/discover_categories.py --promote
 ```
+`scrape.py` drops chains, out-of-state addresses and businesses already in the
+directory at intake, using `prepare.py`'s own functions, so they never reach the CSV.
 
-### 2. Disposition and weed
+### 2. Disposition, auto-settle, flag
 ```bash
-python pipeline/prepare.py
+python pipeline/ledger.py prep    # prepare.py -> resolve_review.py -> flag_review.py
 ```
-This single step removes most of what you do not want to see. It drops chains,
-drops out-of-state rows that HAVE an out-of-state address, drops businesses
-already in the live directory (skip-known), drops anything on your denylist,
-and merges exact-name duplicates among the keepers. Rows with no address land in
-"Needs review" because their state cannot be judged from an empty address field.
+- `prepare.py` drops chains, out-of-state rows, already-live businesses (skip-known) and
+  anything on your denylist, then merges near-duplicates (exact name, and fuzzy names
+  that share a phone or website). Rows with no address go to "Needs review".
+- `resolve_review.py` settles the no-address rows: it looks up each business's real
+  website (even when the listed link is a listicle or aggregator), reads the address,
+  promotes Kentucky businesses and drops out-of-state ones.
+- `flag_review.py` adds a "Review Flag" column and moves anything serious (national
+  brand, likely duplicate of a live row, unverified ownership, no Kentucky signal) into
+  "Needs review" so it cannot upload unexamined.
 
-### 3. Auto-settle the "Needs review" rows
+### 3. Review by hand
+Open `data/businesses_prepared.csv`, filter to "Needs review". Keep the good ones (set
+Disposition to "Good to go"), set the rest to "Dropped". Dropped rows are recorded to
+`data/denylist.csv` automatically -- by the next `prepare.py`, by the upload, or by
+`new-cycle`, whichever comes first -- so they never come back.
+
+### 4. Publish
 ```bash
-python pipeline/resolve_review.py
+python pipeline/ledger.py publish   # upload_to_supabase.py -> enrich.py -> generate-business-pages.js
 ```
-This is the step that has been missing. It visits each Needs-review row's
-website and its about/contact pages, reads the address, then promotes Kentucky
-businesses to Good to go and drops out-of-state ones. After this, the only rows
-left at "Needs review" are the ones no automated check could settle.
-
-Tip: `python pipeline/resolve_review.py --limit 10` does a small test run first;
-`--dry-run` reports without writing.
-
-### 4. NOW review by hand
-Open `businesses_prepared.csv`. Filter to "Needs review". This pile is now small
-and genuine: not chains, not already-live, not denylisted, not out-of-state by
-address or by website. Keep the good ones (set Disposition to "Good to go"),
-drop the rest.
-
-### 5. Remember your drops so they never come back
-```bash
-python pipeline/prepare.py --commit-drops
-```
-Records the rows you just dropped (and the out-of-state ones resolve_review
-dropped) to `data/denylist.csv`. Next run, prepare drops them automatically.
-Run this BEFORE any future `prepare.py`, since a normal run regenerates the file.
-
-### 6. Upload
-```bash
-python pipeline/upload_to_supabase.py
-```
-Uploads only the "Good to go" rows.
+Uploads only the "Good to go" rows, archives the consumed files, fills industry and
+services with Claude, and regenerates the static pages.
 
 ---
 
-## Phase 2: live-table cleanup and enrichment (after upload)
+## Phase 2: live-table cleanup (after upload)
 
-These act on Supabase, so they only make sense once rows are live. For a normal
-upload, run enrich. The three cleaners are safety nets for whatever slipped past
-Phase 1; run them when warranted. If you do run them, run them BEFORE enrich so
-you are not paying Claude to enrich rows you are about to delete.
+These act on Supabase, so they only make sense once rows are live. They are safety
+nets for whatever slipped past Phase 1. The runner only ever runs them as dry runs.
 
 ```bash
-# safety nets (as needed)
-python pipeline/clean_addresses.py            # dry run; --apply to strip stray N/A
-python pipeline/purge_out_of_state.py         # dry run; --apply to delete out-of-state
-python pipeline/dedupe_live.py                # merge any duplicates that got through
+python pipeline/ledger.py maintain   # clean_addresses / purge_out_of_state / dedupe_live, all DRY RUN
 
-# standard post-upload enrichment
-python pipeline/enrich.py                     # fill industry + services via Claude
+# apply the ones you agree with, individually:
+python pipeline/clean_addresses.py --apply
+python pipeline/purge_out_of_state.py --apply
+python pipeline/dedupe_live.py --apply
 
-# publish
-node generate-business-pages.js               # rebuild static pages + sitemap
+# then publish
+node generate-business-pages.js
 git add -A && git commit -m "..." && git push
+```
+
+Lane 2 (certifications) runs against the live table too:
+```bash
+python pipeline/ledger.py certs                                   # dry run
+python pipeline/reconcile_certifications.py --apply               # backfill labels
+python pipeline/reconcile_certifications.py --apply --insert-new  # also add businesses
 ```
 
 Monthly, separately:
 ```bash
-python pipeline/maintain.py                   # re-check website link status
-python pipeline/maintain.py --buyblack        # resolve buyblack.org URLs (SerpApi), as needed
+python pipeline/ledger.py links                # maintain.py: re-check website link status
+python pipeline/maintain.py --buyblack         # resolve buyblack.org URLs (SerpApi), as needed
 ```
-
----
-
-## What still reaches your eyes (known gaps)
-
-1. **Listicle-website rows.** When a Needs-review row's "website" is the article
-   it was scraped from (smileypete.com, the Tennessee Tribune, Voice of Black
-   Cincinnati) rather than the business's own site, `resolve_review.py` reads the
-   listicle, finds no single address, and leaves the row for you. The fix is to
-   detect those aggregator URLs, search for the business's real site (the way
-   `maintain.py --buyblack` does), then run the address extraction on it. NOT yet
-   built.
-
-2. **Near-duplicate names.** prepare merges only EXACT name matches and
-   skip-known catches live duplicates, so a "Joe's BBQ" vs "Joe's BBQ LLC" pair,
-   or the same business under two different websites, can still appear. A fuzzy
-   pre-review dedup in prepare would close this. NOT yet built. `dedupe_live.py`
-   still catches these after upload.

@@ -20,10 +20,22 @@ script nor its output should ever contain a hardcoded key.
 Output: backups/YYYY-MM-DD_HHMMSS/<table>.json, one file per table, plus manifest.json.
 The dump is the full row set including pending submissions and submitter emails, so treat
 the backups/ directory as sensitive.
+
+PRUNING (opt-in; the scheduled task does not prune)
+The daily task never deleted anything, so backups/ grows by one folder a day forever.
+
+    python backup_supabase.py --prune          # REPORT what would be removed; deletes nothing
+    python backup_supabase.py --prune --yes    # actually remove those folders
+
+Kept: every backup from the last KEEP_DAYS days, plus the earliest backup of each
+calendar month (a monthly history going back indefinitely). Only folders named like
+YYYY-MM-DD_HHMMSS that contain a manifest.json are ever considered, and the newest
+backup is always kept.
 """
 
 import json
 import re
+import shutil
 import sys
 import urllib.error
 import urllib.request
@@ -104,7 +116,41 @@ def fetch_table(url, key, table):
         offset += PAGE_SIZE
 
 
+KEEP_DAYS = 14
+_STAMP_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})_\d{6}$")
+
+
+def prune(apply=False):
+    """Report (or, with apply=True, remove) daily backups outside the retention rule."""
+    folders = sorted(p for p in BACKUP_ROOT.iterdir()
+                     if p.is_dir() and _STAMP_RE.match(p.name) and (p / "manifest.json").exists())
+    if not folders:
+        print("No backups found.")
+        return
+    cutoff = datetime.now().timestamp() - KEEP_DAYS * 86400
+    first_of_month = {}
+    for p in folders:                                  # sorted, so the first seen is earliest
+        first_of_month.setdefault(p.name[:7], p)
+    keep = set(first_of_month.values()) | {folders[-1]}
+    for p in folders:
+        if datetime.strptime(p.name, "%Y-%m-%d_%H%M%S").timestamp() >= cutoff:
+            keep.add(p)
+    remove = [p for p in folders if p not in keep]
+
+    print(f"{len(folders)} backups: keeping {len(keep)}, "
+          f"{'removing' if apply else 'would remove'} {len(remove)}.")
+    for p in remove:
+        print(f"  {'removing' if apply else 'would remove'} {p.name}")
+        if apply:
+            shutil.rmtree(p)
+    if remove and not apply:
+        print("\nNothing deleted. Re-run with --prune --yes to remove these.")
+
+
 def main():
+    if "--prune" in sys.argv:
+        prune(apply="--yes" in sys.argv)
+        return
     url, key = read_config()
 
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")

@@ -40,7 +40,7 @@ SUPABASE_URL = "https://ursmecdpgtqckacyhnko.supabase.co"
 SUPABASE_KEY = "sb_publishable_A0zmuZVHVPtosZrNdFE4GQ_sITuTrkg"
 ```
 
-**Python environment (for scripts):** `C:/Users/jfraz/AppData/Local/Python/pythoncore-3.14-64/python.exe`
+**Python environment (for scripts):** `C:\Python314\python.exe` (PowerShell: `py`; Git Bash: `/c/Python314/python.exe`, or `python` via the `~/.bashrc` alias). The old `AppData/Local/Python/pythoncore-3.14-64` path no longer exists — it is why the monthly link check silently stopped running after July 2026. Run everything through `pipeline/ledger.py`, which uses whichever Python launched it.
 **API keys for scripts:** stored in `.env` file (gitignored — never commit)
 
 ---
@@ -79,7 +79,8 @@ The_Peoples_Ledger/
 │   ├── maintain.py             # Link-status check (monthly) + buyblack fix (as needed)
 │   ├── flag_review.py          # Annotates businesses_prepared.csv before your review pass
 │   ├── reconcile_certifications.py  # Lane 2: certifier lists -> businesses (built July 2026)
-│   ├── ledger.py               # Thin orchestrator: prep / publish / maintain / enrich-new
+│   ├── ledger.py               # THE runner: links / new-cycle / scrape / prep / publish / certs / ...
+│   ├── common.py               # Shared: .env, Supabase keys, paged reads, cycle archiving
 │   └── view_database.py        # Open a data/ CSV in D-Tale
 │   #  NOTE: Lane 2 INTAKE (download/convert/rename) lives in the
 │   #  Minority_Biz_Database_Project notebook below, NOT in pipeline/.
@@ -101,17 +102,15 @@ The_Peoples_Ledger/
 ├── docs/
 │   ├── PeoplesLedger_Technical_Reference.md   # This file
 │   ├── maintenance_checklist.md       # Monthly / quarterly runbook
-│   ├── order_of_operations.md         # Phase 1 (CSV) vs Phase 2 (live table) ordering
-│   ├── monthly_link_check.sh          # Wrapper: maintain.py
-│   └── quarterly_refresh.sh           # Wrapper: the 6-step quarterly pipeline
-│   #  NOTE: both .sh live HERE, not the repo root. maintenance_checklist.md tells you to
-│   #  run `bash quarterly_refresh.sh` from the root, which fails. Use docs/ on the path.
+│   └── order_of_operations.md         # Phase 1 (CSV) vs Phase 2 (live table) ordering
+│   #  The two .sh wrappers were removed in October 2026: both hardcoded a Python path
+│   #  that no longer existed. pipeline/ledger.py replaces them.
 │
 ├── data/                       # All working files (GITIGNORED, never committed)
 │   ├── businesses_scraped.csv          # Raw scraper output
 │   ├── businesses_scraped_sources.csv  # Per-row source audit
 │   ├── businesses_scraped_checkpoint.csv
-│   ├── scraper_progress.json           # Lane 1 resume state (delete to force a fresh run)
+│   ├── scraper_progress.json           # Lane 1 resume state (`ledger.py new-cycle` archives it)
 │   ├── businesses_scraped_categories.csv         # Lane 1b verified passes (read by prepare.py)
 │   ├── businesses_scraped_categories_sources.csv # Lane 1b source audit
 │   ├── category_review.csv             # Lane 1b manual-review queue (Tier C)
@@ -120,7 +119,8 @@ The_Peoples_Ledger/
 │   ├── denylist.csv                    # Deliberate drops, recorded automatically by prepare.py
 │   ├── .enrich_submissions_state.json  # enrich_submissions.py watermark
 │   ├── .maintain_state.json            # maintain.py: id -> last link check (25-day skip window)
-│   ├── archive/<timestamp>/            # Scrape files consumed by a completed upload
+│   ├── archive/<timestamp>_uploaded/   # Scrape files consumed by a completed upload
+│   ├── archive/<timestamp>_cycle/      # A finished cycle's progress + output (ledger.py new-cycle)
 │   └── cache/                          # Cached HTML, Maps responses, extractions
 │
 ├── backups/                    # GITIGNORED — DB dumps; contain submitter PII
@@ -337,6 +337,8 @@ This notebook is the Lane 2 cleaner. Do not rebuild it.
 
 Cell 7 already encodes the two file-format traps: `encoding='cp1252'` and `skiprows=5` for both B2GNow CSVs, `skiprows=3` for the xlsx. **Workflow:** drop the fresh downloads into the matching `Spreadsheets/` subfolder, then run cells 2 and 4. Note both cells stamp filenames from *today's* date, and cell 2 deletes the `.xlsx`, so keep an original elsewhere if you want one.
 
+**Optional since `reconcile_certifications.py` exists (October 2026 note).** The reconcile reads the raw downloads directly — it locates the B2GNow header row itself, decodes cp1252, reads the KY Finance `.xlsx` with openpyxl, and takes the **newest** file in each folder by modification time. The July 2026 run used the raw `Directory_<date>_<id>.csv` exports un-renamed. So the routine is now just: drop the downloads into their folders (move the previous export into `archive/`), then `python pipeline/ledger.py certs`. Run the notebook only if you want the dtale look at the raw columns.
+
 ### ✅ EXISTS — the reconcile: `pipeline/reconcile_certifications.py` (built July 2026)
 
 ```bash
@@ -476,22 +478,22 @@ The search is powered by two PostgreSQL RPC functions, not direct table queries.
 
 ## 10. Python Scripts Reference
 
-All scripts load `.env` from the repo root and derive `data/` from their own location, so run them from the repo root. No hardcoded absolute paths. Python: `C:/Users/jfraz/AppData/Local/Python/pythoncore-3.14-64/python.exe`
+All scripts load `.env` from the repo root and derive `data/` from their own location, so run them from the repo root. No hardcoded absolute paths. Python: `C:\Python314\python.exe`. Shared plumbing — `.env` loading, the Supabase key names, the 1,000-row paged read, cycle archiving — lives in `pipeline/common.py`; scripts import it rather than carrying their own copies. The service-role key's canonical name is `SUPABASE_SERVICE_ROLE_KEY` (`SUPABASE_SERVICE_KEY` / `SUPABASE_SECRET_KEY` are still accepted).
 
 | Script | Purpose | Frequency | API cost |
 |---|---|---|---|
-| `pipeline/scrape.py` | Web discovery (Maps, listicles, social) | Quarterly | SerpApi + Haiku (low) |
+| `pipeline/scrape.py` | Lane 1 discovery. Google Maps only by default (18 terms × 34 cities = 612 searches); the web lane (organic, social, page scans + Haiku) is behind `INCLUDE_WEB_LANE`, off. See Section 19. | Quarterly | SerpApi |
 | `pipeline/prepare.py` | Filter geography and chains, dedupe, write the dispositioned file | After each scrape | Free |
 | `pipeline/upload_to_supabase.py` | Insert "Good to go" rows in batches of 100 | After review | Free |
 | `pipeline/enrich.py` | Repair/fill industry then services via Claude. Now repairs existing bad data, not just nulls. Flags: `--industries` (fill null + fix off-list labels), `--services` (fill null + expand thin text), `--reclassify "Bucket,Bucket"` (re-evaluate a bucket, move only on change), `--reenrich-services "Bucket"` (rewrite a bucket's services regardless of length), `--reenrich-groceries` (per-row classifier over Food and Beverage; rewrites only grocery/market businesses so they are findable by "groceries"), `--dry-run`, `--limit N` | After upload | ~$0.75-1.00/1000 |
-| `pipeline/enrich_submissions.py` | Targeted version of `enrich.py` for community submissions approved in admin.html. Reads the `submissions` table for `status = approved` / `submission_type = new` rows submitted after a stored watermark, matches each to its `businesses` row by exact `business_name`, and fills `industry`/`services_products` only where needed (reuses `enrich.py`'s classify/infer functions). Watermark lives in `data/.enrich_submissions_state.json` (gitignored) so re-runs only touch newly-approved rows. Rows with no exact name match are skipped and printed for manual follow-up. Flags: `--dry-run` (preview, does not advance watermark), `--since ISO_TIMESTAMP` (override watermark), `--limit N`. Also runnable via `python pipeline/ledger.py enrich-new`. Does not regenerate static pages — still run `generate-business-pages.js` after. | After each batch of admin.html approvals | ~$0.75-1.00/1000 (only for rows needing work) |
-| `pipeline/dedupe_live.py` | Merge duplicate rows in the live table. Groups by normalized name; survivor keeps the best address and the real business website (not a buyblack.org placeholder); same-name + same-phone rows merge even when addresses differ; genuine address conflicts go to a review CSV. `--selftest`, `--dry-run` (default), `--apply`. Needs the service-role key. | As needed | Free |
-| `pipeline/maintain.py` | Link-status check; `--buyblack` also resolves buyblack.org URLs | Monthly / as needed | Free / SerpApi |
+| `pipeline/enrich_submissions.py` | Targeted version of `enrich.py` for community submissions approved in admin.html. Reads the `submissions` table for `status = approved` / `submission_type = new` rows submitted after a stored watermark, matches each to its `businesses` row by exact `business_name`, and fills `industry`/`services_products` only where needed (reuses `enrich.py`'s classify/infer functions). Watermark lives in `data/.enrich_submissions_state.json` (gitignored) so re-runs only touch newly-approved rows. Rows with no exact name match are skipped and printed for manual follow-up. Flags: `--dry-run` (preview, does not advance watermark), `--since ISO_TIMESTAMP` (override watermark), `--limit N`. Normally run via `python pipeline/ledger.py publish-submissions`, which also regenerates the static pages and commits them (you push). | After each batch of admin.html approvals | ~$0.75-1.00/1000 (only for rows needing work) |
+| `pipeline/dedupe_live.py` | Merge duplicate rows in the live table. Groups by `prepare._dedup_name` (punctuation and a trailing LLC/Inc/Co/Company stripped — the same key the pre-upload dedup uses; until October 2026 it grouped on lowercase name only and missed 20 live duplicate pairs); survivor keeps the best address and the real business website (not a buyblack.org placeholder); same-name + same-phone rows merge even when addresses differ; genuine address conflicts go to a review CSV. `--selftest`, `--dry-run` (default), `--apply`. Needs the service-role key. | As needed | Free |
+| `pipeline/maintain.py` | Link-status check; `--buyblack` also resolves buyblack.org URLs. Checks 16 sites in parallel (headers only, no page body), re-checks every failure once with a 20 s timeout before marking it Inactive, and writes only rows whose status changed. Skips sites checked in the last 25 days unless `--all`. | Monthly (`ledger.py links`) / as needed | Free / SerpApi |
 | `pipeline/flag_review.py` | Annotates `businesses_prepared.csv` with `Review Flag` and `Found Via` before your manual pass, and MOVES serious flags to "Needs review" so they cannot upload unexamined. Flags: national brand, out-of-state, no Kentucky signal, near-duplicate of a live row (fuzzy ≥88), and unverified ownership. `--report` prints without writing. Re-run after any `prepare.py`, which rebuilds the file from a fixed column list and discards both added columns. | Before each review pass | Free |
-| `pipeline/ledger.py` | Thin orchestrator: `prep` (prepare + resolve_review, stops for review), `publish` (upload + enrich industries + enrich services), `maintain` (dry-run health checks), `enrich-new` (= enrich_submissions.py) | Routine path | Varies |
+| `pipeline/ledger.py` | **The runner.** `links` (monthly link check), `new-cycle` (record drops, archive last cycle's progress + output), `scrape`, `prep` (prepare + resolve_review + flag_review, stops for review), `publish` (upload + enrich + regenerate pages), `certs` (Lane 2 dry run), `publish-submissions` (enrich approved submissions + regenerate pages + commit; `enrich-new` still works), `maintain` (dry-run health checks). Destructive `--apply` steps are only ever printed, never run. | Routine path | Varies |
 | `pipeline/resolve_review.py` | Auto-settles "Needs review" rows: finds the business's real site (even when the listed link is a listicle), reads the address, promotes KY / drops out-of-state. `--limit N`, `--dry-run`, `--no-serp` | After prepare.py | SerpApi (small) |
 | `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
-| `backup_supabase.py` (repo root) | Dumps `businesses` + `submissions` to `backups/<timestamp>/` as JSON. Paginates at 1000 (PostgREST truncates silently) and exits non-zero on a zero-row dump so a scheduled run cannot fail quietly. Reads URL + service-role key from admin.html so the key lives in one place. | Before any schema/RLS/grant change; daily via Task Scheduler | Free |
+| `backup_supabase.py` (repo root) | Dumps `businesses` + `submissions` to `backups/<timestamp>/` as JSON. Paginates at 1000 (PostgREST truncates silently) and exits non-zero on a zero-row dump so a scheduled run cannot fail quietly. Reads URL + service-role key from admin.html. `--prune` reports which backups fall outside retention (last 14 days + the earliest of each month); `--prune --yes` removes them. The scheduled task does not prune. | Before any schema/RLS/grant change; daily via Task Scheduler | Free |
 | `notify_pending.ps1` (repo root) | Windows notification when a new submission is pending. Reads the service-role key from admin.html; announced IDs are in `data/.notify_pending_state.json`. `-Test` shows a sample. Installed as a scheduled task by `install_pending_alert.ps1` (`-Uninstall` to remove). | Every 10 min via Task Scheduler | Free |
 | `pipeline/reconcile_certifications.py` | Lane 2: matches the certifier lists against the live table, backfills `certification_type`, and inserts certified businesses not yet present. Dry-run by default; `--apply` backfills, `--insert-new` also inserts. Matches 85-93 go to a review CSV and are never auto-applied. Needs the service-role key. | As agencies refresh (quarterly) | Free |
 
@@ -651,18 +653,20 @@ git push
 
 ## 13. Maintenance Schedule
 
+Everything routine goes through `python pipeline/ledger.py <verb>`; `docs/maintenance_checklist.md` is the step-by-step version.
+
 | Task | Command | Frequency |
 |---|---|---|
-| Add new businesses | `python pipeline/scrape.py` | Quarterly |
-| Prepare (filter + dedupe) | `python pipeline/prepare.py` | After each scrape |
-| Upload approved rows | `python pipeline/upload_to_supabase.py` | After review |
-| Enrich (industry + services) | `python pipeline/enrich.py` | After upload |
-| Dedupe the live table | `python pipeline/dedupe_live.py` (dry-run first, then `--apply`) | As needed |
-| Regenerate SEO pages | `node generate-business-pages.js` | After upload (quarterly) |
-| Refresh link statuses | `python pipeline/maintain.py` | Monthly |
+| Refresh link statuses | `ledger.py links` | Monthly |
+| Start a new cycle | `ledger.py new-cycle` | Quarterly, before scraping |
+| Add new businesses | `ledger.py scrape` | Quarterly (the only month SerpApi needs a paid plan) |
+| Prepare + auto-settle + flag | `ledger.py prep` | After each scrape |
+| Upload, enrich, regenerate pages | `ledger.py publish` | After review |
+| Reconcile certification lists | Drop downloads into `Minority_Biz_Database_Project/Spreadsheets/<certifier>/`, then `ledger.py certs` (dry run), then `reconcile_certifications.py --apply [--insert-new]` | Quarterly / as agencies refresh |
+| Publish approved submissions | `ledger.py publish-submissions`, then `git push` | After admin.html approvals |
+| Live-table health checks | `ledger.py maintain` (dry run); `--apply` on the individual script | As needed |
 | Fix buyblack URLs | `python pipeline/maintain.py --buyblack` | As needed |
 | Back up the database | `python backup_supabase.py` | Daily (scheduled) + before any schema/RLS/grant change |
-| Reconcile certification lists | **Manual.** Intake: drop downloads into `Minority_Biz_Database_Project/Spreadsheets/<certifier>/`, run notebook cells 2 and 4. The match-against-live-table step is not automated — see Section 6a | As agencies refresh |
 
 ---
 
@@ -761,19 +765,25 @@ The web-discovery engine for lane 1. It writes to `data/`, and its output is con
 
 ### Statewide coverage
 
-`STATEWIDE_CITIES` spans every region of Kentucky (Louisville, Lexington, Bowling Green, Owensboro, Covington, Florence, Georgetown, Richmond, Elizabethtown, Nicholasville, Hopkinsville, Frankfort, Paducah, Henderson, Ashland, Murray, Somerset, Madisonville, London, Pikeville, Danville, and Winchester). Both the Maps and organic phases run across this list. Trim the list to cut cost, extend it for finer coverage.
+`STATEWIDE_CITIES` spans every region of Kentucky: 34 cities since July 2026 (the original 22 plus Northern Kentucky and regional hubs — the list in `scrape.py` is authoritative). Every city produced businesses no other city did in the July run, from 51 (Louisville) down to 5 (Berea), so none was trimmed. Each city costs one search per term.
+
+### The web lane is off (October 2026)
+
+Phases 3 and 4 — directory-page harvesting, organic and social search, and the page-scan + Haiku extraction — sit behind `INCLUDE_WEB_LANE`, which is `False`. Under the Option A publishing rule (Section 6b) only rows carrying Google's owner attribute are uploaded, and web-lane rows never carry it. Measured on the July 2026 run: the web lane spent **1,152 of 2,240 SerpApi searches** plus 1,939 page fetches and their extractions to produce 333 candidates, **none publishable**. The code is intact; flip the flag only if the publishing rule changes.
 
 ### Instagram and Facebook
 
-Those two domains are intentionally not skipped. Social pages are read through their og: meta tags, which carry the business name and bio even on a partial fetch. With `INCLUDE_SOCIAL_SEARCHES` on, the script also runs `site:instagram.com` and `site:facebook.com` searches per ownership term to surface profiles directly. Social fetches are less reliable than the site search path because the platforms increasingly block logged-out requests, so treat the site search results as the primary social channel.
+Both are in `SKIP_DOMAINS` and `INCLUDE_SOCIAL_SEARCHES` is `False` (July 2026): Meta answers unauthenticated fetches with HTTP 400 and no `og:` tags, and a 300-URL sample produced zero businesses. Re-measure before re-enabling.
 
 ### SerpApi budget
 
-A full fresh statewide run is roughly 690 SerpApi searches (about 330 Maps, 330 organic, 30 social). The free tier is 100 per month, so a full statewide run needs a paid plan. The script prints the projected count at startup before any search runs. Directory page fetches do not use SerpApi.
+A full fresh run is **612 searches**: 18 terms × 34 cities, Maps only. `QUERY_TYPES` was trimmed from 32 terms in October 2026 by measuring the July Maps cache — 1,088 searches had found 952 unique attribute-confirmed businesses, and the 18 kept terms found 96% of them. The 14 dropped terms (`QUERY_TYPES_LOW_YIELD`, with each term's measured contribution in a comment) cost 476 searches per run for 42 businesses no kept term found. `muslim owned business` found none and cannot: Google has no Muslim-owned attribute. The free tier is 100/month, so the quarterly scrape still needs a paid plan for that one month; nothing else in the pipeline needs more than the free tier. The script prints the projected count at startup.
 
-### Resume behavior
+### Resume behavior, and starting a new cycle
 
-`data/scraper_progress.json` records exactly which Maps searches, directory harvests, organic searches, and URL scans have completed. If any phase fails, fix the problem and re-run. The script skips finished work, including already-paid SerpApi searches, and resumes where it stopped. Business rows are always written to the checkpoint CSV before a unit of work is marked done, so a crash never loses data it claimed to finish. To force a full fresh run, delete `data/scraper_progress.json`.
+`data/scraper_progress.json` records exactly which Maps searches, directory harvests, organic searches, and URL scans have completed. If any phase fails, fix the problem and re-run. The script skips finished work, including already-paid SerpApi searches, and resumes where it stopped. Business rows are always written to the checkpoint CSV before a unit of work is marked done, so a crash never loses data it claimed to finish.
+
+**That same file makes a finished cycle look like "everything done".** After the July 2026 run it marked all 1,088 Maps and 1,152 organic searches complete, so a plain re-run in October would have spent nothing and found nothing, and re-emitted July's checkpoint. Start every new quarterly cycle with `python pipeline/ledger.py new-cycle`, which records manual drops and moves the progress file, checkpoint and all scrape/prepare output into `data/archive/<timestamp>_cycle/`. The scraper also warns at startup when every projected search is already marked done.
 
 ### Skipping businesses already in the directory
 
@@ -800,7 +810,9 @@ The publishable key allows public reads under the existing RLS SELECT policy, so
 
 ### SerpApi limits and clean halting
 
-SerpApi calls distinguish a real failure from a genuine empty result. A quota-exhausted, auth, or persistent rate-limit error halts the run cleanly and does not mark the failed query done, so re-running resumes exactly where it stopped. A genuine no-results response is treated as empty and the run continues. `MAX_SEARCHES_PER_RUN` (default 1500) is a hard per-run ceiling that makes a runaway loop impossible; it is per-invocation, separate from the monthly plan limit. A full statewide pass is about 690 searches. Plan note: the per-hour throughput matters as much as the monthly total. On plans at or below 200 searches/hour, the default 3 to 5 second pacing exceeds the hourly cap and will trigger rate limits, so either raise the delay or run in smaller batches; plans at 1000/hour and above clear the default pace comfortably.
+SerpApi calls distinguish a real failure from a genuine empty result. A quota-exhausted, auth, or persistent rate-limit error halts the run cleanly and does not mark the failed query done, so re-running resumes exactly where it stopped. A genuine no-results response is treated as empty and the run continues. `MAX_SEARCHES_PER_RUN` (default 1500) is a hard per-run ceiling that makes a runaway loop impossible; it is per-invocation, separate from the monthly plan limit. A full pass is 612 searches. **Pacing:** `SERPAPI_HOURLY_LIMIT` (default 1000) — searches run back to back until that many have run in the trailing hour, then wait only until the oldest ages out. Set it to your plan's hourly cap. This replaced a fixed 3–5 s sleep after every search, which added ~2.5 hours of idle time to a 2,240-search run and protected nothing, since SerpApi only enforces the hourly throughput.
+
+**Extraction cache:** only a successful, complete Claude parse is cached. Until October 2026 every outcome was cached, so a transient API error or a response cut off at `max_tokens` (then 2,000 — too small for a dense roundup chunk) made that page look empty for 30 days. `max_tokens` is now 8,000 and a truncated response is reported and retried next run.
 
 ### Caveats to check before uploading
 
@@ -829,6 +841,22 @@ Two related idempotency fixes:
 ---
 
 ## 20. Change Log
+
+### October 2026 (5th) — Efficiency review: cost, runtime, and two things that were silently broken
+
+**Broken: the monthly link check had not run since July 31.** Python moved to `C:\Python314`; `docs/monthly_link_check.sh`, `docs/quarterly_refresh.sh` and the Git Bash `python` alias all still pointed at the deleted `AppData/Local/Python/pythoncore-3.14-64` path. The alias is fixed and both `.sh` files are gone, replaced by `pipeline/ledger.py` verbs that use whichever Python launched them. (The quarterly script was also wrong on its own terms: it uploaded straight after `prepare.py`, skipping `resolve_review`, `flag_review` and the human review, and asked for the certifier downloads without ever running the reconcile.)
+
+**Broken: the next quarterly scrape would have done nothing.** `scraper_progress.json` still marked every July search done. New verb `ledger.py new-cycle` archives the finished cycle; the scraper warns when every projected search is already complete. See Section 19.
+
+**SerpApi: 2,240 → 612 searches per quarterly run.** The web lane (1,152 searches, 1,939 fetches + extractions, 0 publishable rows under Option A) is off behind `INCLUDE_WEB_LANE`, and the Maps term list was trimmed 32 → 18 by measured yield (96% of businesses kept). Search pacing now follows the plan's hourly cap instead of sleeping 3–5 s after every call. The plan only needs to be paid for the month the scrape runs.
+
+**Runtime.** `maintain.py` checks 16 sites at a time with headers only, re-checks failures before marking them Inactive, and writes only changed statuses. `enrich.py` pause 1.2 s → 0.2 s with SDK retries (model unchanged). The scraper downloads the directory once at startup, not twice.
+
+**Silent data loss fixed.** (1) The scraper cached failed and truncated Claude extractions as empty for 30 days. (2) `upload_to_supabase.py` archived `businesses_prepared.csv` without recording manual drops first, so every review that ended in an upload lost its drops; it now calls `prepare.commit_drops` first. (3) `dedupe_live.py` grouped on lowercase name, not the shared `_dedup_name`; the dry run with the shared key found **20 live duplicate pairs** (not yet applied).
+
+**Website.** Supabase caps a response at 1,000 rows: the submit form's name lookup knew 1,000 of 2,319 businesses (so "already listed" missed most) and Export silently stopped at 1,000 — both now page. index.html now reads `?search=` (the "View in Directory" button on every business page did nothing). Ownership pills no longer un-highlight the certification/industry pills. All database text is HTML-escaped in index.html and the generated pages, and only http(s) links are emitted. The sitemap's `lastmod` is each page's real last-change date instead of "today" on every URL. One redundant count request per page load removed.
+
+**Housekeeping.** New `pipeline/common.py` holds the `.env` loader, key names, paged read and archiving that ~10 scripts each carried a copy of. `backup_supabase.py --prune` (report-only unless `--yes`). Removed the stray `gitignore` and the v1 `checkpoint_ky_minority_businesses.csv`; `env.example` lists every variable. The `data/*.PRE-*` snapshots moved to `data/archive/2026-07_pre-snapshots/`.
 
 ### July 2026 (31st) — Lane 2 built; certification becomes a first-class field
 

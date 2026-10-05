@@ -8,8 +8,9 @@ Run from: repo root
 
 What it does
 ------------
-Groups businesses by normalized name (lower + trimmed, the same key Section 5a
-used). For every cluster of 2 or more rows it:
+Groups businesses by normalized name -- prepare.py's _dedup_name, which also drops
+punctuation and a trailing corporate suffix (LLC, Inc, Co, Company...). For every
+cluster of 2 or more rows it:
 
   1. Keeps the LOWEST id as the survivor (id stays stable, so generated
      business pages and indexed URLs keyed on id do not break).
@@ -36,13 +37,12 @@ Safety
 
 Requires the SERVICE ROLE key (deletes bypass RLS). Add to .env at repo root:
     SUPABASE_URL=https://ursmecdpgtqckacyhnko.supabase.co
-    SUPABASE_SERVICE_KEY=<service role key>   (or SUPABASE_SERVICE_ROLE_KEY)
+    SUPABASE_SERVICE_ROLE_KEY=<service role key>
 
 After an --apply run, regenerate the static pages:
     node generate-business-pages.js
 """
 
-import os
 import sys
 import csv
 import re
@@ -57,7 +57,14 @@ from rapidfuzz import fuzz
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 DATA_DIR = REPO_ROOT / "data"
-EXPECTED_PROJECT_REF = "ursmecdpgtqckacyhnko"  # The People's Ledger
+
+sys.path.insert(0, str(SCRIPT_DIR))
+import common  # noqa: E402
+# The SAME name key prepare.py and scrape.py use, so the live cleanup agrees with the
+# pre-upload dedup about what counts as one business. This used to group on
+# lower(trim(name)) only, so "Braxton Brewing Co." and "Braxton Brewing Company" -- one
+# business to prepare.py -- were two different businesses here and never merged.
+from prepare import _dedup_name  # noqa: E402
 
 # Fields backfilled on the survivor when blank. website is handled separately
 # (it gets upgraded, not just filled), and the two comma-separated fields are
@@ -77,25 +84,6 @@ ADDRESS_ABBR = {
 }
 
 BLANK_VALUES = {"", "n/a", "na", "none", "null", "unknown"}
-
-
-# --- env --------------------------------------------------------------------
-def load_env():
-    """Minimal .env loader so this has no hard dependency on python-dotenv."""
-    env_path = REPO_ROOT / ".env"
-    if env_path.exists():
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-
-    url = os.environ.get("SUPABASE_URL", "")
-    key = (os.environ.get("SUPABASE_SERVICE_KEY")
-           or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-           or "")
-    return url, key
 
 
 # --- value helpers ----------------------------------------------------------
@@ -204,23 +192,7 @@ def union_csv(values):
 
 # --- supabase ---------------------------------------------------------------
 def fetch_all(url, key):
-    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
-    rows, offset, page = [], 0, 1000
-    while True:
-        r = requests.get(
-            f"{url}/rest/v1/businesses",
-            headers=headers,
-            params={"select": "*", "order": "id.asc",
-                    "limit": page, "offset": offset},
-            timeout=60,
-        )
-        r.raise_for_status()
-        batch = r.json()
-        rows.extend(batch)
-        if len(batch) < page:
-            break
-        offset += page
-    return rows
+    return common.fetch_all("*", key=key)
 
 
 def patch_survivor(url, key, sid, fields):
@@ -248,8 +220,9 @@ def build_plan(rows):
     survivor id, the patch to apply, and the loser ids to delete."""
     clusters = defaultdict(list)
     for row in rows:
-        key = str(row.get("business_name", "")).strip().lower()
-        clusters[key].append(row)
+        key = _dedup_name(row.get("business_name", ""))
+        if key:
+            clusters[key].append(row)
 
     auto_merges, conflicts = [], []
 
@@ -431,16 +404,7 @@ def main():
     if args.selftest:
         sys.exit(0 if selftest() else 1)
 
-    url, key = load_env()
-    if not url or not key:
-        print("ERROR: SUPABASE_URL and a service role key "
-              "(SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY) "
-              "must be set in .env at the repo root.")
-        sys.exit(1)
-    if EXPECTED_PROJECT_REF not in url:
-        print(f"ERROR: SUPABASE_URL does not contain '{EXPECTED_PROJECT_REF}'. "
-              f"You may be pointed at the wrong project. URL was: {url}")
-        sys.exit(1)
+    url, key = common.require_service_credentials("merges and deletes rows")
 
     print("Fetching businesses...")
     rows = fetch_all(url, key)

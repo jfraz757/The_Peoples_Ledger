@@ -1,81 +1,56 @@
 """
-Kentucky Minority-Owned Business Scraper  (v2)
-==============================================
-Searches the web statewide for minority-owned businesses in Kentucky and
-extracts structured data, with a budget-first pipeline and full resume support.
+Kentucky Minority-Owned Business Scraper  (Lane 1: web discovery)
+=================================================================
+Searches statewide for minority-owned businesses in Kentucky, with a budget-first
+pipeline and full resume support.
 
-WHAT CHANGED FROM v1 (diff against ky_minority_business_scraper.py):
-  1.  Google Maps engine added (Phase 1). Structured name/address/phone/website
-      straight from SerpApi local_results. No page fetch, no Claude call.
-  2.  Extraction model switched Sonnet -> Haiku (EXTRACT_MODEL). Same JSON job,
-      far lower per-record cost.
-  3.  Listicle pages no longer truncated at 6000 chars. High-density pages are
-      chunked and extracted in full so every business on a roundup is captured.
-  4.  Directory harvesting now keeps INTERNAL profile links (e.g.
-      /directory/business/123), not only outbound links. Deep-link discovery
-      now reads the FULL page (nav/header/footer included) where About links live.
-  5.  Optional JSON/XHR directory endpoints (DIRECTORY_API_ENDPOINTS) for the
-      JS-rendered directories that return nothing to plain requests.
-  6.  should_skip() now parses the host and matches exact/suffix domains, so it
-      no longer drops valid sites like essex.com or commercelexington.com.
-  7.  Statewide coverage. Organic and Maps searches run across STATEWIDE_CITIES,
-      and organic search paginates (SEARCH_PAGES).
-  8.  On-disk cache for fetched HTML and Claude extractions, so re-runs skip the
-      fetch and skip re-paying for unchanged pages.
+PHASES
+  1. Google Maps (always on). Structured name/address/phone/website straight from
+     SerpApi local_results -- no page fetch, no Claude call. A result is kept ONLY
+     when Google's self-identified ownership attribute is present, and it is tagged
+     from that attribute, never from the search query.
+  2. Directory JSON endpoints (DIRECTORY_API_ENDPOINTS, empty by default).
+  3. Collect URLs from directory pages, organic search and social search.
+  4. Fetch each URL, check for ownership language, extract with Claude Haiku.
 
-NEW IN THIS REVISION:
-  A.  STATEWIDE. STATEWIDE_CITIES spans every region of Kentucky.
-  B.  INSTAGRAM / FACEBOOK. SUPERSEDED July 2026 -- both are now in SKIP_DOMAINS and
-      INCLUDE_SOCIAL_SEARCHES is False. The og: meta tag approach described here was
-      valid when written but Meta now returns HTTP 400 with no og: tags to
-      unauthenticated fetches. Measured 0 businesses from a 300-URL random sample.
-      See the note in SKIP_DOMAINS before re-enabling.
-  C.  PHASE-LEVEL RESUME. A progress file records exactly which Maps searches,
-      directory harvests, organic searches, and URL scans have completed. If any
-      phase fails, fix it and re-run: the script skips finished work (including
-      already-paid SerpApi searches) and resumes where it stopped.
-  D.  SKIP KNOWN BUSINESSES. With SKIP_KNOWN_BUSINESSES on, the scraper loads the
-      existing Supabase directory at startup and skips any scan URL whose domain
-      is already a known business website (no fetch, no Claude call), and drops
-      exact name+website matches from the output. Needs SUPABASE_URL and
-      SUPABASE_KEY in .env. Fuzzy de-duplication stays in clean_ky_businesses.py.
-  E.  MAPS OWNERSHIP IS VERIFIED, NOT ASSUMED. A Maps result is kept only when
-      Google's own self-identified ownership attribute is present, and it is
-      tagged from that attribute, never from the search query. This stops nearby
-      or popular non-minority businesses (chains, hardware stores, anything with
-      "Black" in the name) from being mislabeled. Raw Maps responses are cached.
-  F.  CLEAN HALT ON QUOTA, RATE LIMIT, OR AUTH FAILURE. SerpApi calls now tell a
-      real failure apart from a genuine empty result. A quota/auth error or a
-      rate limit that survives retries stops the run cleanly WITHOUT marking the
-      failed query done, so a re-run resumes exactly there. A genuine no-results
-      response is normal and does not halt. MAX_SEARCHES_PER_RUN is a hard
-      per-run ceiling so a runaway loop can never drain the plan.
+  Phases 3 and 4 are the "web lane" and are OFF by default (INCLUDE_WEB_LANE).
+  The publishing rule since July 2026 is that only rows carrying Google's owner
+  attribute are uploaded (technical reference, Section 6b). In the July 2026 run
+  the web lane spent 1,152 of 2,240 SerpApi searches, plus 1,939 page fetches
+  and Haiku extractions, on 333 candidates of which none could be published.
 
-OUTPUT (renamed so you can compare against the v1 output):
-  ky_minority_businesses_v2.csv             main result, same 6-column schema as v1
-  ky_minority_businesses_v2_sources.csv     audit-only log of where each row came from
-  checkpoint_ky_minority_businesses_v2.csv  rolling save
-  scraper_progress.json                     phase/step resume state
-  cache_v2/                                 cached HTML + extractions
+RESUME
+  data/scraper_progress.json records every completed search and URL scan. If a
+  run halts (quota, rate limit, crash), re-run the same command: finished work is
+  skipped, including already-paid searches. Before a NEW quarterly cycle, run
+  `python pipeline/ledger.py new-cycle`, which archives the previous cycle's
+  progress and output -- otherwise this script treats the old cycle as finished
+  and does nothing.
 
-SETUP:
-    pip install requests beautifulsoup4 pandas anthropic google-search-results python-dotenv
-    Copy .env.example to .env, fill SERPAPI_KEY and ANTHROPIC_API_KEY.
-    For the skip-known optimization, also add to .env:
-        SUPABASE_URL=https://ursmecdpgtqckacyhnko.supabase.co
-        SUPABASE_KEY=<the publishable key used in index.html>
-    python ky_minority_business_scraper_v2.py
+SKIP KNOWN BUSINESSES
+  With SKIP_KNOWN_BUSINESSES on, the live directory is loaded once at startup and
+  every business passes an intake gate (add_business) that drops chains,
+  out-of-state addresses and businesses already in the directory, using
+  prepare.py's own key functions. Needs SUPABASE_URL and SUPABASE_KEY (the
+  publishable read key) in .env.
 
-GITIGNORE additions (see the companion markdown file):
-    cache_v2/
-    scraper_progress.json
-    ky_minority_businesses_v2.csv
-    checkpoint_ky_minority_businesses_v2.csv
-    ky_minority_businesses_v2_sources.csv
+CLEAN HALT
+  A quota/auth error, or a rate limit that survives retries, stops the run without
+  marking the failed query done. MAX_SEARCHES_PER_RUN is a hard per-run ceiling.
+  SERPAPI_HOURLY_LIMIT paces searches to your plan's hourly cap.
 
-SERPAPI BUDGET: statewide is not cheap. The script prints the projected search
-count at startup so you can decide before it runs. Resume means a re-run never
-repeats a completed search, so you only pay for searches once.
+OUTPUT (data/, gitignored)
+  businesses_scraped.csv             main result, 6-column schema
+  businesses_scraped_sources.csv     audit log of where each row came from
+  businesses_scraped_checkpoint.csv  rolling save
+  scraper_progress.json              resume state
+  cache/                             cached Maps responses, HTML, extractions
+
+SETUP
+    pip install requests beautifulsoup4 pandas anthropic google-search-results python-dotenv rapidfuzz
+    Copy env.example to .env and fill in the keys.
+    python pipeline/scrape.py                  # or: python pipeline/ledger.py scrape
+    python pipeline/scrape.py --collect-only   # web lane only: stop after URL collection
 """
 
 import os
@@ -89,14 +64,16 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from anthropic import Anthropic
-from dotenv import load_dotenv
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import common  # noqa: E402
 
 # ---------------------------------------------
 #  PATHS (portable: derived from this file's location, no hardcoded paths)
 # ---------------------------------------------
-PIPELINE_DIR      = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT         = os.path.dirname(PIPELINE_DIR)
-DATA_DIR          = os.path.join(REPO_ROOT, "data")
+PIPELINE_DIR      = common.PIPELINE_DIR
+REPO_ROOT         = common.REPO_ROOT
+DATA_DIR          = common.DATA_DIR
 OUTPUT_FILE       = os.path.join(DATA_DIR, "businesses_scraped.csv")
 CHECKPOINT_FILE   = os.path.join(DATA_DIR, "businesses_scraped_checkpoint.csv")
 SOURCES_LOG_FILE  = os.path.join(DATA_DIR, "businesses_scraped_sources.csv")
@@ -106,21 +83,27 @@ CACHE_DIR         = os.path.join(DATA_DIR, "cache")
 # ---------------------------------------------
 #  LOAD KEYS FROM .env (repo root, so it is found regardless of working dir)
 # ---------------------------------------------
-load_dotenv(os.path.join(REPO_ROOT, ".env"))
-SERPAPI_KEY       = os.getenv("SERPAPI_KEY", "")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+SERPAPI_KEY       = common.env("SERPAPI_KEY")
+ANTHROPIC_API_KEY = common.env("ANTHROPIC_API_KEY")
 # Read-only public credentials, used to skip businesses already in the directory.
 # These are the same publishable values used client-side in index.html.
-SUPABASE_URL      = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY      = os.getenv("SUPABASE_KEY", "")
+SUPABASE_URL      = common.supabase_url()
+SUPABASE_KEY      = common.publishable_key()
 
 # ---------------------------------------------
 #  TUNING
 # ---------------------------------------------
 CHECKPOINT_EVERY    = 5         # Save CSV every N businesses found
-REQUEST_DELAY       = (2, 4)    # Seconds between page fetches
-SEARCH_DELAY        = (3, 5)    # Seconds between SerpApi calls
+REQUEST_DELAY       = (2, 4)    # Seconds between page fetches (politeness to small sites)
 REQUEST_TIMEOUT     = 12        # Seconds before giving up on a URL
+
+# SerpApi searches per hour your plan allows. Searches are NOT slowed down until this
+# many have run in the trailing hour. There used to be a fixed 3-5 s sleep after every
+# search, which added ~2.5 hours of pure waiting to a 2,240-search run and protected
+# nothing: SerpApi only enforces the plan's hourly throughput. Set this to your plan's
+# hourly cap (it is on the SerpApi pricing page). Too high is not dangerous -- a rate
+# limit error is retried, then halts the run cleanly so it resumes.
+SERPAPI_HOURLY_LIMIT = 1000
 RESULTS_PER_QUERY   = 10        # Google results per organic query page
 SEARCH_PAGES        = 1         # Organic result pages per query (each page = 1 SerpApi search)
 MAX_DEEP_LINKS      = 3         # Max subpages to check per business site
@@ -145,7 +128,6 @@ _known_keys = None      # normalised live business names, filled at startup
 _known_sites = set()    # normalised live websites
 
 try:
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from prepare import (is_chain as _is_chain, addr_state as _addr_state,
                          _dedup_name, _norm_site)
 except Exception as _e:                                   # pragma: no cover
@@ -204,10 +186,20 @@ MAPS_CITIES    = STATEWIDE_CITIES
 ORGANIC_CITIES = STATEWIDE_CITIES
 
 # ---------------------------------------------
-#  SOCIAL (Instagram / Facebook)
-#  These domains are intentionally NOT skipped. Many small minority-owned
-#  businesses live only on social. We read their og: meta tags and, optionally,
-#  search the platforms directly with the site: operator.
+#  WEB LANE (Phases 3 + 4: directory pages, organic search, page scans)
+# ---------------------------------------------
+# OFF since October 2026. Only rows carrying Google's owner-set attribute are
+# published (technical reference, Section 6b, "Option A"), and web-lane rows never
+# carry it -- every ownership error found in the July 2026 review came from this lane.
+# Measured on that run: 1,152 of 2,240 SerpApi searches, 1,939 page fetches and their
+# Haiku extractions produced 333 candidates, 0 published.
+#
+# Turn this back on only if the publishing rule changes to accept web-lane evidence.
+# The code is intact; nothing else needs to change.
+INCLUDE_WEB_LANE = False
+
+# ---------------------------------------------
+#  SOCIAL (Instagram / Facebook) -- part of the web lane
 # ---------------------------------------------
 # Turned OFF July 2026. These site: searches still WORK -- they return Instagram and
 # Facebook URLs perfectly well -- but those URLs can no longer be fetched: Meta returns
@@ -251,53 +243,60 @@ GOOGLE_IDENTITY_ATTRIBUTES = [
 
 # ---------------------------------------------
 #  QUERY -> MINORITY TYPE PAIRS
-#  Labels match the ownership filter pills in index.html exactly. This type also
-#  tags Maps results (which carry no ownership text) and is the fallback for
-#  organic pages where extraction returns no type.
+#  Labels match the ownership filter pills in index.html exactly. For Maps results
+#  the query only decides what Google SURFACES -- the tag always comes from Google's
+#  ownership attribute. The type here is the fallback for web-lane pages only.
+#
+#  Every tag reuses one of the ownership types the site's filter in index.html offers
+#  (data-type attributes). Do NOT introduce a new minority_type string without adding
+#  a matching pill to index.html.
 # ---------------------------------------------
+# Trimmed October 2026 from 32 terms to the 18 that found 96% of businesses.
+#
+# Measured on the July 2026 run's Maps cache (32 terms x 34 cities = 1,088 searches,
+# 952 unique attribute-confirmed businesses). Terms are listed in greedy-cover order:
+# the number is how many businesses that term found that no earlier term in the list
+# had already found. Cumulative coverage is in brackets.
 QUERY_TYPES = [
-    ("black owned business",            "Black-Owned"),
-    ("african american owned business", "Black-Owned"),
-    ("black woman owned business",      "Black-Owned, Women-Owned"),
-    ("hispanic owned business",         "Latine-Owned"),
-    ("latino owned business",           "Latine-Owned"),
-    ("latina owned business",           "Latine-Owned, Women-Owned"),
-    ("asian owned business",            "Asian-Owned"),
-    ("lgbtq owned business",            "LGBTQ+-Owned"),
-    ("queer owned business",            "LGBTQ+-Owned"),
-    ("women owned business",            "Women-Owned"),
-    ("veteran owned business",          "Veteran-Owned"),
-    ("native american owned business",  "Native American-Owned"),
-    ("disability owned business",       "Disability-Owned"),
-    ("muslim owned business",           "Muslim-Owned"),
-    ("minority owned business",         "Minority-Owned (general)"),
+    ("women owned business",            "Women-Owned"),                 # +439  (46%)
+    ("black owned business",            "Black-Owned"),                 # +122  (59%)
+    ("trans owned business",            "LGBTQ+-Owned"),                # +60   (65%)
+    ("black woman owned business",      "Black-Owned, Women-Owned"),    # +55   (71%)
+    ("mexican owned business",          "Latine-Owned"),                # +40   (75%)
+    ("asian owned business",            "Asian-Owned"),                 # +36   (79%)
+    ("veteran owned business",          "Veteran-Owned"),               # +28   (82%)
+    ("african american owned business", "Black-Owned"),                 # +19   (84%)
+    ("native american owned business",  "Native American-Owned"),       # +17   (86%)
+    ("disability owned business",       "Disability-Owned"),            # +17   (88%)
+    ("cuban owned business",            "Latine-Owned"),                # +15   (89%)
+    ("indian owned business",           "Asian-Owned"),                 # +13   (90%)
+    ("queer owned business",            "LGBTQ+-Owned"),                # +11   (92%)
+    ("hispanic owned business",         "Latine-Owned"),                # +9    (93%)
+    ("vietnamese owned business",       "Asian-Owned"),                 # +8    (93%)
+    ("korean owned business",           "Asian-Owned"),                 # +7    (94%)
+    ("nigerian owned business",         "Black-Owned"),                 # +7    (95%)
+    ("deaf owned business",             "Disability-Owned"),            # +7    (96%)
+]
 
-    # --- Community-specific terms (added July 2026) ---------------------------
-    # The generic terms above under-surface specific communities: someone whose
-    # business is described online as "Korean-owned" or "Nigerian-owned" often does
-    # not also appear under "asian owned business" / "black owned business".
-    #
-    # Every tag here reuses one of the NINE ownership types the site's filter in
-    # index.html actually offers (data-type attributes). Do NOT introduce a new
-    # minority_type string without adding a matching pill to index.html -- there are
-    # already 283 rows tagged "Minority-Owned (general)" that no filter can reach.
-    ("korean owned business",           "Asian-Owned"),
-    ("vietnamese owned business",       "Asian-Owned"),
-    ("chinese owned business",          "Asian-Owned"),
-    ("indian owned business",           "Asian-Owned"),
-    ("filipino owned business",         "Asian-Owned"),
-    ("mexican owned business",          "Latine-Owned"),
-    ("cuban owned business",            "Latine-Owned"),
-    ("puerto rican owned business",     "Latine-Owned"),
-    ("african owned business",          "Black-Owned"),
-    ("nigerian owned business",         "Black-Owned"),
-    ("ethiopian owned business",        "Black-Owned"),
-    ("somali owned business",           "Black-Owned"),
-    ("gay owned business",              "LGBTQ+-Owned"),
-    ("lesbian owned business",          "LGBTQ+-Owned, Women-Owned"),
-    ("trans owned business",            "LGBTQ+-Owned"),
-    ("deaf owned business",             "Disability-Owned"),
-    ("disabled veteran owned business", "Veteran-Owned, Disability-Owned"),
+# Dropped from the default run: together they cost 476 searches per run and added 42
+# businesses the terms above did not already find. To restore one, move it back into
+# QUERY_TYPES. "muslim owned business" found nothing new and cannot: Google has no
+# Muslim-owned attribute, so a Maps result can never be tagged from it.
+QUERY_TYPES_LOW_YIELD = [
+    ("latina owned business",           "Latine-Owned, Women-Owned"),   # +6
+    ("african owned business",          "Black-Owned"),                 # +6
+    ("chinese owned business",          "Asian-Owned"),                 # +5
+    ("ethiopian owned business",        "Black-Owned"),                 # +5
+    ("minority owned business",         "Minority-Owned (general)"),    # +4
+    ("filipino owned business",         "Asian-Owned"),                 # +4
+    ("lesbian owned business",          "LGBTQ+-Owned, Women-Owned"),   # +3
+    ("lgbtq owned business",            "LGBTQ+-Owned"),                # +2
+    ("somali owned business",           "Black-Owned"),                 # +2
+    ("disabled veteran owned business", "Veteran-Owned, Disability-Owned"),  # +2
+    ("latino owned business",           "Latine-Owned"),                # +1
+    ("puerto rican owned business",     "Latine-Owned"),                # +1
+    ("gay owned business",              "LGBTQ+-Owned"),                # +1
+    ("muslim owned business",           "Muslim-Owned"),                # +0
 ]
 
 # Known directory pages to harvest links from (HTML, scrapeable with requests)
@@ -543,9 +542,9 @@ def detect_ownership_from_maps(result: dict) -> str:
     return ", ".join(found)
 
 
-def polite_pause(search: bool = False):
-    delay = SEARCH_DELAY if search else REQUEST_DELAY
-    time.sleep(random.uniform(*delay))
+def polite_pause():
+    """Pause between page fetches. SerpApi pacing lives in serp_call."""
+    time.sleep(random.uniform(*REQUEST_DELAY))
 
 
 def strip_fences(raw: str) -> str:
@@ -646,52 +645,50 @@ def fetch_known_businesses() -> tuple[set, set, set, int]:
       known_keys  -> business_key(name, website) for exact-match output filtering
       known_hosts -> website hosts already captured (non-social) for scan skipping
       known_urls  -> normalized website URLs for exact social-profile skipping
+
+    In the same pass it fills the intake gate's LOOSE keys (_known_keys /
+    _known_sites: prepare.py's normalised name and website). Those used to come from
+    a second full download of the directory right after this one.
     """
+    global _known_keys, _known_sites
     if not (SUPABASE_URL and SUPABASE_KEY):
         print("  [SUPABASE_URL / SUPABASE_KEY not set in .env -- cannot skip "
               "known businesses; proceeding without that optimization]")
         return set(), set(), set(), 0
 
     keys, hosts, urls = set(), set(), set()
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Accept": "application/json",
-    }
-    limit, offset, total = 1000, 0, 0
+    loose_names, loose_sites = set(), set()
+    total = 0
     try:
-        while True:
-            endpoint = (f"{SUPABASE_URL}/rest/v1/businesses"
-                        f"?select=business_name,website&order=id.asc"
-                        f"&limit={limit}&offset={offset}")
-            resp = requests.get(endpoint, headers=headers, timeout=REQUEST_TIMEOUT)
-            if resp.status_code != 200:
-                print(f"  [Supabase read failed: HTTP {resp.status_code}] {resp.text[:200]}")
-                break
-            rows = resp.json()
-            if not rows:
-                break
-            for r in rows:
-                name = r.get("business_name") or ""
-                site = r.get("website") or ""
-                if not name:
-                    continue
-                keys.add(business_key(name, site))
-                if site:
-                    nu = normalize_website(site)
-                    urls.add(nu)
-                    host = nu.split("/")[0]
-                    if host and not any(host == d or host.endswith("." + d) for d in SOCIAL_DOMAINS):
-                        hosts.add(host)
-                total += 1
-            offset += limit
-            if len(rows) < limit:
-                break
+        rows = common.fetch_all("business_name,website", key=SUPABASE_KEY)
     except Exception as e:
         print(f"  [Supabase read error] {e}")
+        rows = []
+    for r in rows:
+        name = r.get("business_name") or ""
+        site = r.get("website") or ""
+        if not name:
+            continue
+        keys.add(business_key(name, site))
+        loose_names.add(_dedup_name(name))
+        if site:
+            loose_sites.add(_norm_site(site))
+            nu = normalize_website(site)
+            urls.add(nu)
+            host = nu.split("/")[0]
+            if host and not any(host == d or host.endswith("." + d) for d in SOCIAL_DOMAINS):
+                hosts.add(host)
+        total += 1
 
     print(f"  [Loaded {total} existing businesses: {len(hosts)} known hosts, "
           f"{len(urls)} known URLs]")
+    if _INTAKE_FILTERS:
+        if total:
+            _known_keys, _known_sites = loose_names, loose_sites
+            print(f"  Intake gate armed: {len(_known_keys)} names, {len(_known_sites)} websites.")
+        else:
+            _known_keys = None
+            print("  [intake gate: could not load live keys, name/site skip disabled]")
     return keys, hosts, urls, total
 
 
@@ -732,7 +729,6 @@ def get_maps_businesses(query_text: str, minority_type: str, city: str) -> list[
                 json.dump(local, f)
         except Exception:
             pass
-        polite_pause(search=True)
 
     out, confirmed_count = [], 0
     for r in local:
@@ -838,6 +834,21 @@ class SerpApiHalt(Exception):
 
 
 _SEARCH_COUNT = 0
+_SEARCH_TIMES: list[float] = []   # start times of searches in the trailing hour
+
+
+def _respect_hourly_limit():
+    """Block only when SERPAPI_HOURLY_LIMIT searches have already run in the
+    trailing 60 minutes, and then only until the oldest one ages out."""
+    now = time.time()
+    while _SEARCH_TIMES and now - _SEARCH_TIMES[0] >= 3600:
+        _SEARCH_TIMES.pop(0)
+    if len(_SEARCH_TIMES) >= SERPAPI_HOURLY_LIMIT:
+        wait = 3600 - (now - _SEARCH_TIMES[0]) + 1
+        print(f"  [SerpApi hourly limit of {SERPAPI_HOURLY_LIMIT} reached, waiting {wait/60:.0f} min]")
+        time.sleep(wait)
+        _SEARCH_TIMES.pop(0)
+    _SEARCH_TIMES.append(time.time())
 
 # A genuine no-results response is normal and must not halt the run.
 SERP_BENIGN_ERROR_HINTS = [
@@ -864,6 +875,7 @@ def serp_call(params: dict, max_retries: int = 3) -> dict:
     while True:
         attempt += 1
         try:
+            _respect_hourly_limit()
             _SEARCH_COUNT += 1
             results = GoogleSearch(params).get_dict()
         except Exception as e:
@@ -902,9 +914,7 @@ def serp_organic(full_q: str, page: int = 0) -> list[str]:
         "start":    page * RESULTS_PER_QUERY,
     }
     results = serp_call(params)   # raises SerpApiHalt on quota/rate/auth failure
-    urls = [r["link"] for r in results.get("organic_results", []) if "link" in r]
-    polite_pause(search=True)
-    return urls
+    return [r["link"] for r in results.get("organic_results", []) if "link" in r]
 
 
 def get_search_urls(query_text: str, city: str, page: int = 0) -> list[str]:
@@ -1019,23 +1029,31 @@ def claude_extract_chunk(chunk: str) -> list[dict]:
         except Exception:
             pass
 
-    data: list = []
+    # Only a successful, complete parse is cached. Previously every outcome was cached,
+    # including API errors and truncated output, so one transient failure made the page
+    # look empty for CACHE_TTL_DAYS and its businesses were silently never extracted.
     try:
         prompt = EXTRACT_PROMPT.format(page_text=chunk)
         response = anthropic_client.messages.create(
             model=EXTRACT_MODEL,
-            max_tokens=2000,
+            # A roundup chunk can list a dozen businesses at ~100 tokens each; 2000 was
+            # enough to cut the JSON off mid-array, which then failed to parse.
+            max_tokens=8000,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = strip_fences(response.content[0].text)
-        parsed = json.loads(raw)
-        if isinstance(parsed, list):
-            data = parsed
-    except (json.JSONDecodeError, IndexError) as e:
-        print(f"  [Claude Parse Error] {e}")
+        if response.stop_reason == "max_tokens":
+            print("  [Claude output truncated at max_tokens; not cached, will retry next run]")
+            return []
+        text = next((b.text for b in response.content if b.type == "text"), "")
+        parsed = json.loads(strip_fences(text))
+    except json.JSONDecodeError as e:
+        print(f"  [Claude Parse Error, not cached] {e}")
+        return []
     except Exception as e:
-        print(f"  [Claude API Error] {e}")
+        print(f"  [Claude API Error, not cached] {e}")
+        return []
 
+    data = parsed if isinstance(parsed, list) else []
     try:
         with open(cpath, "w", encoding="utf-8") as f:
             json.dump(data, f)
@@ -1190,124 +1208,14 @@ def add_business(b: dict, database: list, seen: set) -> bool:
 
 
 # ---------------------------------------------
-#  MAIN
+#  WEB LANE (Phases 3 + 4)
 # ---------------------------------------------
-def build_database():
-    global _SEARCH_COUNT
-    _SEARCH_COUNT = 0
-    ensure_cache_dirs()
-    database, seen_businesses = load_checkpoint()
-    p = load_progress()
-
-    # Load existing directory so we do not re-fetch, re-extract, or re-emit
-    # businesses we already have.
-    known_keys, known_hosts, known_urls = set(), set(), set()
+def _run_web_lane(p, persist, database, seen_businesses, known_hosts, known_urls,
+                  directories_done, organic_done, scanned_urls):
+    """Phases 3 and 4 (directory pages, organic + social search, page scans).
+    Returns the number of URLs skipped as already known, or None when
+    --collect-only stopped the run after URL collection."""
     skipped_known = 0
-    if SKIP_KNOWN_BUSINESSES:
-        print("\n=== Loading existing directory from Supabase ===")
-        known_keys, known_hosts, known_urls, _ = fetch_known_businesses()
-        seen_businesses |= known_keys   # exact name+website matches are filtered from output
-
-        # Build the LOOSE keys the intake gate uses. known_keys above is
-        # business_key(name, website) -- an exact pair -- which almost never matches a
-        # scrape. These are the same normalised name / website keys prepare.py uses,
-        # so a business already in the directory is stopped here instead of being
-        # extracted and discarded two stages later.
-        if _INTAKE_FILTERS:
-            global _known_keys, _known_sites
-            _known_keys, _known_sites = set(), set()
-            try:
-                offset, page = 0, 1000
-                while True:
-                    r = requests.get(
-                        f"{SUPABASE_URL}/rest/v1/businesses",
-                        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
-                        params={"select": "business_name,website", "order": "id.asc",
-                                "limit": page, "offset": offset}, timeout=30)
-                    r.raise_for_status()
-                    batch = r.json()
-                    for row in batch:
-                        nm = _dedup_name(row.get("business_name") or "")
-                        st = _norm_site(row.get("website") or "")
-                        if nm: _known_keys.add(nm)
-                        if st: _known_sites.add(st)
-                    if len(batch) < page:
-                        break
-                    offset += page
-                print(f"  Intake gate armed: {len(_known_keys)} names, {len(_known_sites)} websites.")
-            except Exception as e:
-                print(f"  [intake gate: could not load live keys, name/site skip disabled: {e}]")
-                _known_keys = None
-
-    maps_done        = set(p["maps_done"])
-    api_done         = set(p["api_done"])
-    directories_done = set(p["directories_done"])
-    organic_done     = set(p["organic_done"])
-    scanned_urls     = set(p["scanned_urls"])
-
-    def persist(flush_csv: bool = False):
-        # Order matters for crash safety: write business rows to disk BEFORE
-        # marking the work done, so a crash never loses data it claimed to finish.
-        if flush_csv and database:
-            save_csv(database, CHECKPOINT_FILE)
-        p["maps_done"]        = sorted(maps_done)
-        p["api_done"]         = sorted(api_done)
-        p["directories_done"] = sorted(directories_done)
-        p["organic_done"]     = sorted(organic_done)
-        p["scanned_urls"]     = sorted(scanned_urls)
-        save_progress(p)
-
-    # --- Budget estimate -----------------------------------------------------
-    maps_calls    = len(QUERY_TYPES) * len(MAPS_CITIES)
-    organic_calls = len(QUERY_TYPES) * len(ORGANIC_CITIES) * SEARCH_PAGES
-    social_calls  = len(QUERY_TYPES) * len(SOCIAL_SEARCH_SITES) if INCLUDE_SOCIAL_SEARCHES else 0
-    total_calls   = maps_calls + organic_calls + social_calls
-    already_done  = len(maps_done) + len(organic_done)
-    print("\n=== Projected SerpApi searches for a full fresh run ===")
-    print(f"  Maps:    {maps_calls}")
-    print(f"  Organic: {organic_calls}")
-    print(f"  Social:  {social_calls}")
-    print(f"  TOTAL:   {total_calls}   (free tier is 100/month)")
-    if already_done:
-        print(f"  Resuming: {already_done} searches already completed and will be skipped.")
-    print("  Directory page fetches do not use SerpApi.\n")
-
-    # --- Phase 1: Google Maps (tag only from Google's ownership attribute) ----
-    print("=== Phase 1: Google Maps ===")
-    maps_confirmed, maps_leads = 0, 0
-    for query_text, mtype in QUERY_TYPES:
-        for city in MAPS_CITIES:
-            unit = f"{query_text}|{city}"
-            if unit in maps_done:
-                continue
-            for b in get_maps_businesses(query_text, mtype, city):
-                if b["_confirmed"]:
-                    if add_business(b, database, seen_businesses):
-                        maps_confirmed += 1
-                elif MAPS_VERIFY_LEADS_VIA_WEBSITE and b.get("website") and not is_social(b["website"]):
-                    # Queue the website for the Phase 4 evidence check rather than
-                    # trusting the query. It is added only if its page shows ownership.
-                    site = b["website"]
-                    if site not in p["url_type_hint"]:
-                        p.setdefault("url_list", []).append(site)
-                        p.setdefault("url_type_hint", {})[site] = b["_lead_hint"]
-                        maps_leads += 1
-            maps_done.add(unit)
-            persist(flush_csv=True)
-    print(f"  Phase 1 complete: {maps_confirmed} ownership-confirmed businesses added"
-          + (f", {maps_leads} unconfirmed leads queued for evidence check" if MAPS_VERIFY_LEADS_VIA_WEBSITE else ""))
-
-    # --- Phase 2: Directory JSON endpoints (structured) ----------------------
-    if DIRECTORY_API_ENDPOINTS:
-        print("\n=== Phase 2: Directory JSON endpoints ===")
-        for cfg in DIRECTORY_API_ENDPOINTS:
-            unit = cfg.get("name", cfg.get("url", ""))
-            if unit in api_done:
-                continue
-            for b in harvest_from_api_endpoint(cfg):
-                add_business(b, database, seen_businesses)
-            api_done.add(unit)
-            persist(flush_csv=True)
 
     # --- Phase 3: Collect URLs (directories + organic + social) --------------
     if not p["urls_collected"]:
@@ -1396,7 +1304,7 @@ def build_database():
             print(f"    {n:>5}  {h}")
         print(f"\n  Queue saved to data/scraper_progress.json -> url_list.")
         print(f"  Prune it, then re-run without --collect-only to scan the survivors.")
-        return
+        return None
 
     # --- Phase 4: Scan each URL ----------------------------------------------
     print(f"\n=== Phase 4: Scanning {len(unique_urls)} unique URLs ===\n")
@@ -1432,6 +1340,114 @@ def build_database():
         scanned_urls.add(url)
         persist(flush_csv=added_any)   # flush rows to disk only when this URL produced any
 
+    return skipped_known
+
+
+# ---------------------------------------------
+#  MAIN
+# ---------------------------------------------
+def build_database():
+    global _SEARCH_COUNT
+    _SEARCH_COUNT = 0
+    ensure_cache_dirs()
+    database, seen_businesses = load_checkpoint()
+    p = load_progress()
+
+    # Load existing directory so we do not re-fetch, re-extract, or re-emit
+    # businesses we already have.
+    known_keys, known_hosts, known_urls = set(), set(), set()
+    if SKIP_KNOWN_BUSINESSES:
+        print("\n=== Loading existing directory from Supabase ===")
+        # Also arms the intake gate's loose name/website keys (one download, not two).
+        known_keys, known_hosts, known_urls, _ = fetch_known_businesses()
+        seen_businesses |= known_keys   # exact name+website matches are filtered from output
+
+    maps_done       = set(p["maps_done"])
+    api_done         = set(p["api_done"])
+    directories_done = set(p["directories_done"])
+    organic_done     = set(p["organic_done"])
+    scanned_urls     = set(p["scanned_urls"])
+
+    def persist(flush_csv: bool = False):
+        # Order matters for crash safety: write business rows to disk BEFORE
+        # marking the work done, so a crash never loses data it claimed to finish.
+        if flush_csv and database:
+            save_csv(database, CHECKPOINT_FILE)
+        p["maps_done"]        = sorted(maps_done)
+        p["api_done"]         = sorted(api_done)
+        p["directories_done"] = sorted(directories_done)
+        p["organic_done"]     = sorted(organic_done)
+        p["scanned_urls"]     = sorted(scanned_urls)
+        save_progress(p)
+
+    # --- Budget estimate -----------------------------------------------------
+    maps_calls    = len(QUERY_TYPES) * len(MAPS_CITIES)
+    organic_calls = len(QUERY_TYPES) * len(ORGANIC_CITIES) * SEARCH_PAGES if INCLUDE_WEB_LANE else 0
+    social_calls  = (len(QUERY_TYPES) * len(SOCIAL_SEARCH_SITES)
+                     if INCLUDE_WEB_LANE and INCLUDE_SOCIAL_SEARCHES else 0)
+    total_calls   = maps_calls + organic_calls + social_calls
+    already_done  = len(maps_done) + (len(organic_done) if INCLUDE_WEB_LANE else 0)
+    print("\n=== Projected SerpApi searches for a full fresh run ===")
+    print(f"  Maps:    {maps_calls}   ({len(QUERY_TYPES)} terms x {len(MAPS_CITIES)} cities)")
+    print(f"  Organic: {organic_calls}" + ("" if INCLUDE_WEB_LANE else "   (web lane off)"))
+    print(f"  Social:  {social_calls}")
+    print(f"  TOTAL:   {total_calls}   (free tier is 100/month)")
+    if already_done:
+        print(f"  Resuming: {already_done} searches already completed and will be skipped.")
+        if already_done >= total_calls:
+            print("  !! Every search is already marked done. If this is a NEW quarterly cycle,\n"
+                  "     stop and run:  python pipeline/ledger.py new-cycle")
+    print()
+
+    # --- Phase 1: Google Maps (tag only from Google's ownership attribute) ----
+    print("=== Phase 1: Google Maps ===")
+    maps_confirmed, maps_leads = 0, 0
+    for query_text, mtype in QUERY_TYPES:
+        for city in MAPS_CITIES:
+            unit = f"{query_text}|{city}"
+            if unit in maps_done:
+                continue
+            for b in get_maps_businesses(query_text, mtype, city):
+                if b["_confirmed"]:
+                    if add_business(b, database, seen_businesses):
+                        maps_confirmed += 1
+                elif MAPS_VERIFY_LEADS_VIA_WEBSITE and b.get("website") and not is_social(b["website"]):
+                    # Queue the website for the Phase 4 evidence check rather than
+                    # trusting the query. It is added only if its page shows ownership.
+                    site = b["website"]
+                    if site not in p["url_type_hint"]:
+                        p.setdefault("url_list", []).append(site)
+                        p.setdefault("url_type_hint", {})[site] = b["_lead_hint"]
+                        maps_leads += 1
+            maps_done.add(unit)
+            persist(flush_csv=True)
+    print(f"  Phase 1 complete: {maps_confirmed} ownership-confirmed businesses added"
+          + (f", {maps_leads} unconfirmed leads queued for evidence check" if MAPS_VERIFY_LEADS_VIA_WEBSITE else ""))
+
+    # --- Phase 2: Directory JSON endpoints (structured) ----------------------
+    if DIRECTORY_API_ENDPOINTS:
+        print("\n=== Phase 2: Directory JSON endpoints ===")
+        for cfg in DIRECTORY_API_ENDPOINTS:
+            unit = cfg.get("name", cfg.get("url", ""))
+            if unit in api_done:
+                continue
+            for b in harvest_from_api_endpoint(cfg):
+                add_business(b, database, seen_businesses)
+            api_done.add(unit)
+            persist(flush_csv=True)
+
+    # --- Phases 3 + 4: web lane (off by default; see INCLUDE_WEB_LANE) -------
+    skipped_known = 0
+    if INCLUDE_WEB_LANE:
+        skipped_known = _run_web_lane(p, persist, database, seen_businesses,
+                                      known_hosts, known_urls, directories_done,
+                                      organic_done, scanned_urls)
+        if skipped_known is None:      # --collect-only
+            return
+    else:
+        print("\n(Web lane off: INCLUDE_WEB_LANE = False. Phases 3-4 skipped -- "
+              "no organic searches, page fetches or extractions.)")
+
     # --- Phase 5: Final export -----------------------------------------------
     if database:
         save_csv(database, OUTPUT_FILE)
@@ -1444,11 +1460,12 @@ def build_database():
             print(f"Intake gate rejected {total} row(s) before they reached the CSV: " +
                   ", ".join(f"{v} {k}" for k, v in _INTAKE_DROPS.items() if v))
             print("  (previously these were extracted, written, then discarded by prepare.py)")
-        if SKIP_KNOWN_BUSINESSES:
+        if SKIP_KNOWN_BUSINESSES and INCLUDE_WEB_LANE:
             print(f"Skipped {skipped_known} URLs already in the directory "
                   f"(no fetch, no extraction spent on them).")
         print(f"Source audit log written to {SOURCES_LOG_FILE}")
-        print("Delete data/scraper_progress.json to force a full fresh run next time.")
+        print("Next: python pipeline/ledger.py prep")
+        print("Before the NEXT quarterly cycle, run: python pipeline/ledger.py new-cycle")
     else:
         print("\nNo businesses found. Check your API keys in the .env file.")
 

@@ -33,6 +33,7 @@ import sys
 import json
 import time
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 import requests
 
@@ -46,26 +47,22 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from supabase import create_client
-from dotenv import load_dotenv
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT    = os.path.dirname(PIPELINE_DIR)
-DATA_DIR     = os.path.join(REPO_ROOT, "data")
-load_dotenv(os.path.join(REPO_ROOT, ".env"))
+sys.path.insert(0, PIPELINE_DIR)
+import common  # noqa: E402
 
-SUPABASE_URL  = os.getenv("SUPABASE_URL")
-# Service role required -- see module docstring. Named explicitly because .env has
-# historically defined SUPABASE_KEY twice and dotenv keeps only the last occurrence.
-SUPABASE_KEY  = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-SERPAPI_KEY   = os.getenv("SERPAPI_KEY")
+DATA_DIR      = common.DATA_DIR
+# Service role required -- see module docstring.
+SUPABASE_URL, SUPABASE_KEY = common.require_service_credentials("writes link status")
+SERPAPI_KEY   = common.env("SERPAPI_KEY")
 
-if not SUPABASE_KEY:
-    raise SystemExit(
-        "SUPABASE_SERVICE_ROLE_KEY is missing from .env. This script writes to `businesses`, "
-        "which anon can no longer do. Do not substitute the publishable key."
-    )
-TIMEOUT       = 8
-SLEEP_LINKS   = 0.5
+TIMEOUT        = 8
+RETRY_TIMEOUT  = 20   # second, slower attempt for anything that failed the first pass
+# Websites are checked this many at a time. Each check goes to a DIFFERENT business's
+# server, so parallel checks put no extra load on any one site. This used to be one at
+# a time with a 0.5 s sleep after each, so ~2,300 sites took the better part of an hour.
+WORKERS        = 16
 SLEEP_BUYBLACK = 1.5
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                           "AppleWebKit/537.36 Chrome/120.0 Safari/537.36"}
@@ -81,14 +78,17 @@ SOCIAL_SKIP = ["facebook.com", "instagram.com", "fb.com"]
 
 
 # ── link status ───────────────────────────────────────────────────────────────
-def check_url(url):
+def check_url(url, timeout=TIMEOUT):
     if any(domain in url.lower() for domain in SOCIAL_SKIP):
         return "Active"
     try:
         if not url.startswith("http"):
             url = "https://" + url
-        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        return "Active" if resp.status_code < 400 else "Inactive"
+        # stream=True: only the status line and headers are needed. Without it every
+        # check downloaded the whole homepage, images-in-HTML and all.
+        with requests.get(url, headers=HEADERS, timeout=timeout,
+                          allow_redirects=True, stream=True) as resp:
+            return "Active" if resp.status_code < 400 else "Inactive"
     except Exception:
         return "Inactive"
 
@@ -149,25 +149,52 @@ def run_links(supabase, force_all=False):
         if fresh:
             print(f"[Links] skipping {len(fresh)} checked within {RECHECK_AFTER_DAYS} days "
                   f"(use --all to force)")
-    print(f"[Links] to check: {len(records)} of {total_found}")
+    print(f"[Links] to check: {len(records)} of {total_found}  ({WORKERS} at a time)")
 
-    active = inactive = err = 0
-    for i, r in enumerate(records, 1):
-        status = check_url(r["website"])
-        try:
-            supabase.table("businesses").update({"status": status}).eq("id", r["id"]).execute()
-            active += status == "Active"
-            inactive += status != "Active"
-            checked[str(r["id"])] = datetime.now(timezone.utc).isoformat()
-            if i % 25 == 0:
-                _save_checked(checked)   # survive a crash mid-run
-            print(f"  [{i}/{len(records)}] {str(r['business_name'])[:42]:<42} {status}")
-        except Exception as e:
-            err += 1
-            print(f"  ERROR {r.get('business_name','?')}: {e}")
-        time.sleep(SLEEP_LINKS)
+    # Pass 1: check everything in parallel.
+    results = {}
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        futures = {pool.submit(check_url, r["website"]): r for r in records}
+        for n, fut in enumerate(as_completed(futures), 1):
+            r = futures[fut]
+            results[r["id"]] = fut.result()
+            if n % 100 == 0 or n == len(records):
+                print(f"  checked {n}/{len(records)}")
+
+    # Pass 2: a site that failed once gets a second, slower attempt before it is shown
+    # publicly as "Link Inactive". One timeout used to be enough to flip a working
+    # business's listing -- a slow small-business host or a momentary outage on the
+    # morning of the check.
+    failed = [r for r in records if results[r["id"]] != "Active"]
+    if failed:
+        print(f"[Links] re-checking {len(failed)} failure(s) with a {RETRY_TIMEOUT}s timeout...")
+        with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+            futures = {pool.submit(check_url, r["website"], RETRY_TIMEOUT): r for r in failed}
+            for fut in as_completed(futures):
+                results[futures[fut]["id"]] = fut.result()
+
+    # Write only rows whose status actually changed. Every row used to get an UPDATE
+    # even when the status was the same as last month, i.e. ~2,300 writes for a handful
+    # of real changes.
+    active = inactive = changed = err = 0
+    now = datetime.now(timezone.utc).isoformat()
+    for r in records:
+        status = results[r["id"]]
+        active += status == "Active"
+        inactive += status != "Active"
+        if status != (r.get("status") or ""):
+            try:
+                supabase.table("businesses").update({"status": status}).eq("id", r["id"]).execute()
+                changed += 1
+                print(f"  {str(r['business_name'])[:42]:<42} {r.get('status') or '(none)'} -> {status}")
+            except Exception as e:
+                err += 1
+                print(f"  ERROR {r.get('business_name','?')}: {e}")
+                continue
+        checked[str(r["id"])] = now
 
     _save_checked(checked)
+    print(f"[Links] {changed} status change(s) written.")
 
     print("[Links] Marking no-website records...")
     supabase.table("businesses").update({"status": "No Website"}).is_("website", "null").execute()
