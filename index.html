@@ -1518,9 +1518,15 @@
       return;
     }
 
+    // data-word + addEventListener, not an inline onclick string: the old
+    // .replace(/'/g, "\'") was a no-op, so a suggestion containing an apostrophe
+    // ("Choi's") broke the button.
     chips.innerHTML = suggestions.map(s =>
-      `<button class="suggestion-chip" onclick="applySuggestion('${s.suggestion.replace(/'/g, "\'")}')">${s.suggestion}</button>`
+      `<button class="suggestion-chip" data-word="${escapeHtml(s.suggestion)}">${escapeHtml(s.suggestion)}</button>`
     ).join("");
+    chips.querySelectorAll(".suggestion-chip").forEach(chip => {
+      chip.addEventListener("click", () => applySuggestion(chip.dataset.word));
+    });
 
     box.classList.add("visible");
   }
@@ -1532,6 +1538,11 @@
     serviceQuery = "";
     currentPage = 1;
     render();
+  }
+
+  function isUnfiltered() {
+    return !nameQuery && !areaQuery && !serviceQuery &&
+           activeType === "All" && activeIndustry === "All" && activeCert === "All";
   }
 
   async function render() {
@@ -1546,8 +1557,12 @@
     try {
       const records = await fetchRecords();
 
-      document.getElementById("record-count").textContent =
-        totalCount > 0 ? `${totalCount.toLocaleString()} businesses and counting` : "No businesses found";
+      // The hero shows the size of the WHOLE directory, so it only updates from an
+      // unfiltered result. (It used to show whatever the current filter returned.)
+      if (isUnfiltered() && totalCount > 0) {
+        document.getElementById("record-count").textContent =
+          `${totalCount.toLocaleString()} businesses and counting`;
+      }
 
       meta.textContent = totalCount > 0
         ? `${totalCount.toLocaleString()} business${totalCount !== 1 ? "es" : ""} found`
@@ -1575,7 +1590,23 @@
     }
   }
 
-  function cardHTML(b) {
+  // Only http(s) links reach an href. Website values come from public submissions, so a
+  // "javascript:..." value must never become a clickable link.
+  function safeUrl(url) {
+    if (!url) return null;
+    const u = String(url).trim();
+    const full = /^https?:\/\//i.test(u) ? u : "https://" + u;
+    try { return new URL(full).protocol.startsWith("http") ? full : null; } catch (e) { return null; }
+  }
+
+  function cardHTML(raw) {
+    // Every text field is escaped before it touches innerHTML. Names, addresses and
+    // descriptions arrive from public submissions; approval was the only thing standing
+    // between a "<script>" in a business name and every visitor's browser.
+    const b = {};
+    for (const [k, v] of Object.entries(raw)) b[k] = (v == null) ? v : escapeHtml(v);
+    const href = safeUrl(raw.website);
+
     const statusClass = b.status === "Active" ? "status-active"
                       : b.status === "Inactive" ? "status-inactive"
                       : "status-nosite";
@@ -1585,11 +1616,11 @@
                       : b.status === "No Website" ? "No Website"
                       : "";
 
-    const websiteLink = b.website
-      ? `<a class="card-link" href="${b.website}" target="_blank" rel="noopener">Visit Website &rarr;</a>`
+    const websiteLink = href
+      ? `<a class="card-link" href="${escapeHtml(href)}" target="_blank" rel="noopener">Visit Website &rarr;</a>`
       : `<span class="card-link" style="opacity:0.3">No Website</span>`;
 
-    const domain  = b.website ? (() => { try { return new URL(b.website).hostname; } catch(e) { return null; } })() : null;
+    const domain  = href ? (() => { try { return new URL(href).hostname; } catch(e) { return null; } })() : null;
     const favicon = domain
       ? `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=32" alt="" class="card-favicon" onerror="this.style.display='none'" />`
       : `<div class="card-favicon-placeholder"></div>`;
@@ -1636,7 +1667,7 @@
         ${b.services_products ? `<div class="card-detail card-services">
            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-           </svg><span>${b.services_products.length > 120 ? b.services_products.substring(0, 120) + '...' : b.services_products}</span>
+           </svg><span>${raw.services_products.length > 120 ? escapeHtml(raw.services_products.substring(0, 120)) + '...' : b.services_products}</span>
          </div>` : ''}
         <div class="card-footer">
           <span class="card-status ${statusClass}">${statusLabel}</span>
@@ -1674,7 +1705,10 @@
   }
 
   function filterByType(btn) {
-    document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
+    // Scoped to the ownership row. A bare ".pill" also matched the certification and
+    // industry pills (they carry the class too), so choosing an ownership filter
+    // un-highlighted those -- while they stayed applied to the results.
+    document.querySelectorAll("#filter-pills .pill").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     activeType  = btn.dataset.type;
     currentPage = 1;
@@ -1702,6 +1736,27 @@
   document.getElementById("search-area").addEventListener("keydown", e => { if (e.key === "Enter") runSearch(); });
   document.getElementById("search-service").addEventListener("keydown", e => { if (e.key === "Enter") runSearch(); });
 
+  // Supabase returns at most 1,000 rows per request, whatever `limit` asks for. The
+  // directory passed 1,000 businesses in 2026, so any "fetch everything" call has to
+  // page. Both the export and the submit-form name lookup used a single limit=2000
+  // request and silently got only the first 1,000 (alphabetically) of 2,300+.
+  async function fetchAllRows(params) {
+    const PAGE = 1000;
+    let all = [];
+    for (let offset = 0; ; offset += PAGE) {
+      const p = new URLSearchParams(params);
+      p.set("limit", PAGE);
+      p.set("offset", offset);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/businesses?${p.toString()}`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      });
+      if (!res.ok) throw new Error("Server returned " + res.status);
+      const batch = await res.json();
+      all = all.concat(batch);
+      if (batch.length < PAGE) return all;
+    }
+  }
+
   // ─── EXPORT ─────────────────────────────────────────────────
   async function exportAll(format) {
     const exportBtn = event.target;
@@ -1712,8 +1767,7 @@
       // Fetch all matching records for export
       const exportParams = new URLSearchParams();
       exportParams.set("select", "*");
-      exportParams.set("order", "business_name.asc");
-      exportParams.set("limit", "2000");
+      exportParams.set("order", "business_name.asc,id.asc");   // id breaks ties so pages never overlap
 
       const textQuery = [nameQuery, serviceQuery].filter(Boolean).join(" ").trim();
       if (textQuery) {
@@ -1739,8 +1793,7 @@
         if (activeCert === "VOSB") exportParams.set("and", "(certification_type.not.ilike.%SDVOSB%)");
       }
 
-      const res     = await fetch(`${SUPABASE_URL}/rest/v1/businesses?${exportParams.toString()}`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
-      const records = await res.json();
+      const records = await fetchAllRows(exportParams);
 
       if (format === "csv") {
         const headers = ["business_name","address","phone","services_products","website","minority_type","industry","status","kentucky_based"];
@@ -1941,11 +1994,11 @@
   let updAcHighlight   = -1;
 
   async function loadBusinessNames() {
+    // Paged (see fetchAllRows). With a single request this list stopped at 1,000 names,
+    // so the "already listed" warning missed most businesses and duplicate submissions
+    // reached the moderation queue.
     try {
-      const res  = await fetch(`${SUPABASE_URL}/rest/v1/businesses?select=business_name,address&order=business_name.asc&limit=2000`, {
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
-      });
-      allBusinessNames = await res.json();
+      allBusinessNames = await fetchAllRows({ select: "business_name,address", order: "business_name.asc,id.asc" });
     } catch(e) {}
   }
 
@@ -2094,14 +2147,26 @@
 
   // ─── INIT ────────────────────────────────────────────────────
   (async () => {
-    // Get total count for hero display
-    try {
-      const countRes = await fetch(`${SUPABASE_URL}/rest/v1/businesses?select=*&limit=1`, {
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Prefer: "count=exact" }
-      });
-      const total = parseInt(countRes.headers.get("content-range")?.split("/")[1] || "0");
-      document.getElementById("record-count").textContent = `${total.toLocaleString()} businesses and counting`;
-    } catch(e) {}
+    // Every static business page links here as index.html?search=<name> ("View in
+    // Directory"). Nothing read that parameter, so those 2,300 links all landed on the
+    // unfiltered directory.
+    const initialSearch = new URLSearchParams(window.location.search).get("search");
+    if (initialSearch) {
+      nameQuery = initialSearch.trim();
+      document.getElementById("search-name").value = nameQuery;
+    }
+
+    // An unfiltered first render already returns the directory total (total_count),
+    // so the separate count request is only needed when the page opens pre-filtered.
+    if (!isUnfiltered()) {
+      try {
+        const countRes = await fetch(`${SUPABASE_URL}/rest/v1/businesses?select=id&limit=1`, {
+          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Prefer: "count=exact" }
+        });
+        const total = parseInt(countRes.headers.get("content-range")?.split("/")[1] || "0");
+        if (total) document.getElementById("record-count").textContent = `${total.toLocaleString()} businesses and counting`;
+      } catch(e) {}
+    }
 
     render();
   })();

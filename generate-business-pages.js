@@ -107,10 +107,23 @@ function displayUrl(url) {
   return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
 
-// Ensure URL has protocol for hrefs
+// Ensure URL has protocol for hrefs, and only ever emit an http(s) link.
 function fullUrl(url) {
   if (!url) return null;
-  return url.startsWith("http") ? url : "https://" + url;
+  const u = String(url).trim();
+  const full = /^https?:\/\//i.test(u) ? u : "https://" + u;
+  try { return new URL(full).protocol.startsWith("http") ? full : null; } catch { return null; }
+}
+
+// Every database value is escaped before it goes into a page. Names, addresses and
+// descriptions can arrive from public submissions, and these pages are served from the
+// site's own domain, so unescaped text was one approval away from running script there.
+function esc(val) {
+  return String(val ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 // ── Fetch all businesses ──────────────────────────────────────────────────────
@@ -147,24 +160,32 @@ async function fetchAllBusinesses() {
 // ── Generate individual business HTML ─────────────────────────────────────────
 
 function buildBusinessPage(biz) {
+  // Raw values are kept for URL-encoding and comparisons; everything written into the
+  // HTML goes through esc().
+  const raw = biz;
   const {
-    id, business_name, address, phone, website,
-    services_products, minority_type, industry,
-    status, kentucky_based, certification_type
+    status, kentucky_based,
   } = biz;
+  const business_name     = esc(raw.business_name);
+  const address           = raw.address ? esc(raw.address) : "";
+  const phone             = raw.phone;
+  const website           = raw.website;
+  const services_products = raw.services_products ? esc(raw.services_products) : "";
+  const industry          = raw.industry ? esc(raw.industry) : "";
 
-  const slug         = biz._slug || slugify(business_name);
-  const minorityList = splitField(minority_type);
-  const certList     = splitField(certification_type);
-  const phoneDisplay = formatPhone(phone);
-  const websiteDisplay = displayUrl(website);
+  const slug         = biz._slug || slugify(raw.business_name);
+  const minorityList = splitField(raw.minority_type).map(esc);
+  const certList     = splitField(raw.certification_type).map(esc);
+  const phoneDisplay = phone ? esc(formatPhone(phone)) : null;
+  const phoneHref    = phone ? esc(phone) : null;
   const websiteHref    = fullUrl(website);
-  const faviconUrl     = website
+  const websiteDisplay = websiteHref ? esc(displayUrl(website)) : null;
+  const faviconUrl     = websiteHref
     ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(websiteHref)}&sz=32`
     : null;
 
   const isActive  = status === "Active";
-  const hasWebsite = status !== "No Website" && website;
+  const hasWebsite = status !== "No Website" && websiteHref;
 
   // Status badge
   const statusBadge = isActive
@@ -191,7 +212,8 @@ function buildBusinessPage(biz) {
   const description  = `${business_name} is a ${ownershipStr}${industryStr}${locationStr}. Find contact info, services, and certification details on The People's Ledger.`;
 
   // Directory back-link — links to index with business name pre-filled in search
-  const directoryLink = `${SITE_URL}/index.html?search=${encodeURIComponent(business_name)}`;
+  // (index.html reads ?search= on load).
+  const directoryLink = `${SITE_URL}/index.html?search=${encodeURIComponent(raw.business_name)}`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -478,19 +500,19 @@ function buildBusinessPage(biz) {
     <div class="detail-row">
       <div class="detail-label">Address</div>
       <div class="detail-value">
-        <a href="https://maps.google.com/?q=${encodeURIComponent(address)}" target="_blank" rel="noopener">${address}</a>
+        <a href="https://maps.google.com/?q=${encodeURIComponent(raw.address)}" target="_blank" rel="noopener">${address}</a>
       </div>
     </div>` : ""}
     ${phoneDisplay ? `
     <div class="detail-row">
       <div class="detail-label">Phone</div>
-      <div class="detail-value"><a href="tel:${phone}">${phoneDisplay}</a></div>
+      <div class="detail-value"><a href="tel:${phoneHref}">${phoneDisplay}</a></div>
     </div>` : ""}
     ${hasWebsite ? `
     <div class="detail-row">
       <div class="detail-label">Website</div>
       <div class="detail-value">
-        <a href="${websiteHref}" target="_blank" rel="noopener">${websiteDisplay}</a>
+        <a href="${esc(websiteHref)}" target="_blank" rel="noopener">${websiteDisplay}</a>
       </div>
     </div>` : ""}
     ${kentucky_based === "Yes" ? `
@@ -529,12 +551,20 @@ function buildBusinessPage(biz) {
 
 // ── Generate sitemap ──────────────────────────────────────────────────────────
 
+// The date a file last changed. Pages are only rewritten when their content changes
+// (see main), so a page's mtime is the date its content last changed. The sitemap used
+// to stamp TODAY on every URL on every run, telling Google all 2,300 pages had changed
+// even when none had -- search engines learn to ignore a lastmod that is always "today".
+function lastModified(file) {
+  try { return fs.statSync(file).mtime.toISOString().split("T")[0]; }
+  catch { return new Date().toISOString().split("T")[0]; }
+}
+
 function buildSitemap(businesses) {
-  const today = new Date().toISOString().split("T")[0];
   const urls = businesses.map(b => `
   <url>
     <loc>${SITE_URL}/businesses/${b._slug}.html</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${lastModified(path.join(OUT_DIR, `${b._slug}.html`))}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>`).join("");
@@ -543,13 +573,13 @@ function buildSitemap(businesses) {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${SITE_URL}/index.html</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${lastModified(path.join(__dirname, "index.html"))}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>${SITE_URL}/about.html</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${lastModified(path.join(__dirname, "about.html"))}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>${urls}
@@ -591,8 +621,15 @@ async function main() {
   if (skipped) console.log(`  ${skipped} records skipped (no business name).`);
 
   const sitemap = buildSitemap(businesses.filter(b => b.business_name && b.business_name.trim()));
-  fs.writeFileSync(path.join(OUT_DIR, "sitemap.xml"), sitemap, "utf8");
-  console.log("  sitemap.xml written to /businesses/");
+  const sitemapPath = path.join(OUT_DIR, "sitemap.xml");
+  let oldSitemap = null;
+  try { oldSitemap = fs.readFileSync(sitemapPath, "utf8"); } catch { /* first run */ }
+  if (oldSitemap === sitemap) {
+    console.log("  sitemap.xml unchanged.");
+  } else {
+    fs.writeFileSync(sitemapPath, sitemap, "utf8");
+    console.log("  sitemap.xml written to /businesses/");
+  }
 
   console.log("\nDone. Next steps:");
   console.log("  git add businesses/");
