@@ -177,7 +177,7 @@ A full quarterly scrape is 612 SerpApi searches and makes no Claude calls (the M
 
 | Task | Command | Frequency |
 |---|---|---|
-| Refresh link statuses | `python pipeline/ledger.py links` | Monthly |
+| Refresh link statuses | Automatic on the 1st (scheduled task, see `install_monthly_links.ps1`); by hand: `python pipeline/ledger.py links` | Monthly |
 | Start a new cycle | `python pipeline/ledger.py new-cycle` | Quarterly |
 | Add new businesses | `python pipeline/ledger.py scrape` | Quarterly |
 | Prepare, auto-settle, flag | `python pipeline/ledger.py prep` | After each scrape |

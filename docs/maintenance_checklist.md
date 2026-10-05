@@ -12,16 +12,24 @@
 
 ---
 
-## Monthly
+## Monthly -- automatic
 
-```bash
-python pipeline/ledger.py links
+**Nothing to do.** The "PeoplesLedger Monthly Link Check" scheduled task runs
+`python pipeline/ledger.py monthly` at 10:00 on the 1st of every month (or as soon as the
+PC is next on): it re-checks every business website, updates `status` (Active / Inactive /
+No Website), regenerates the pages, and commits and pushes `businesses/` so the new
+statuses go live. Output is appended to `data/monthly_links.log` -- glance at it if you
+want to confirm a run. It only pushes from `main`.
+
+The check is free. It runs 16 sites at a time, re-checks any failure once before calling
+it Inactive, and writes only the statuses that changed.
+
+```powershell
+Start-ScheduledTask -TaskName 'PeoplesLedger Monthly Link Check'          # run it now
+powershell -ExecutionPolicy Bypass -File install_monthly_links.ps1 -Uninstall   # remove the schedule
 ```
 
-Re-checks every business website and updates `status` (Active / Inactive / No Website).
-Free. Checks 16 sites at a time, re-checks any failure once before calling it Inactive,
-and writes only the statuses that changed. If any changed, regenerate and push the pages
-(the runner prints the commands).
+To run only the link check by hand, without committing: `python pipeline/ledger.py links`.
 
 `maintain.py --buyblack` also fixes buyblack.org placeholder URLs, but it spends SerpApi,
 so the monthly run does not do it.

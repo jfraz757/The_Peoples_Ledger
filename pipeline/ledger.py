@@ -75,6 +75,41 @@ def links():
          "        git add businesses/ && git commit -m \"Refresh link status\" && git push")
 
 
+def git(*args):
+    return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True)
+
+
+def monthly():
+    """Unattended monthly run (Task Scheduler, 1st of the month -- see
+    install_monthly_links.ps1): link check, regenerate pages, then commit and push
+    ONLY businesses/ so the new statuses reach the live site.
+
+    The link check went unrun for two months in 2026 because it depended on someone
+    remembering it, and a status change that is never pushed never reaches the site.
+    Pushes only from `main`; on any other branch it commits nothing and says so."""
+    from datetime import date
+    print(f"\n#### Monthly link check {date.today().isoformat()} ####")
+    run("maintain.py", label="Link status check (monthly)")
+    generate_pages()
+
+    branch = git("branch", "--show-current").stdout.strip()
+    if branch != "main":
+        done(f"On branch '{branch}', not main -- pages regenerated but NOT committed or pushed.")
+        return
+    git("add", "-A", "businesses/")
+    if git("diff", "--cached", "--quiet", "--", "businesses/").returncode == 0:
+        done("No page changes this month. Nothing to commit.")
+        return
+    # Pathspec commit: only businesses/ goes in, even if other files happen to be staged.
+    c = git("commit", "-m", f"Monthly link check {date.today().isoformat()}", "--", "businesses/")
+    print(c.stdout.strip() or c.stderr.strip())
+    p = git("push", "origin", "main")
+    if p.returncode != 0:
+        print(f"!! git push failed -- run `git push` by hand.\n{p.stderr.strip()}")
+        sys.exit(1)
+    done("Committed and pushed. The live site updates in a few minutes.")
+
+
 def new_cycle():
     """Start a new quarterly cycle: save manual drops, then archive the previous
     cycle's progress and output so the scraper starts fresh."""
@@ -174,6 +209,8 @@ USAGE = """The People's Ledger runner.   python pipeline/ledger.py <verb>
 
 MONTHLY
   links                link-status check of every website
+  monthly              links + regenerate pages + commit/push businesses/ (what the
+                       scheduled task runs on the 1st -- see install_monthly_links.ps1)
 
 QUARTERLY, in this order
   (download the three certifier files by hand first -- see docs/maintenance_checklist.md)
@@ -190,6 +227,7 @@ AS NEEDED
 
 VERBS = {
     "links": links,
+    "monthly": monthly,
     "new-cycle": new_cycle,
     "scrape": scrape,
     "prep": prep,

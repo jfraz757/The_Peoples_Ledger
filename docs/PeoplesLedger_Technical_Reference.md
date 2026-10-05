@@ -61,6 +61,9 @@ The_Peoples_Ledger/
 ├── businesses/                 # 1,443 generated pages + sitemap.xml (committed)
 │
 ├── backup_supabase.py          # Dumps all tables to backups/<timestamp>/ as JSON (July 2026)
+├── install_monthly_links.ps1   # Scheduled task: monthly link check + page push on the 1st
+├── notify_pending.ps1          # Toast when a submission is pending (scheduled, every 10 min)
+├── install_pending_alert.ps1   # Installs the notify_pending scheduled task
 ├── restrict_anon_grants.sql    # APPLIED July 2026 — revoked anon write access
 ├── drop_permissive_policies.sql# APPLIED July 2026 — dropped over-permissive RLS policies
 ├── add_cert_filter_rpc.sql     # APPLIED July 2026 — cert_filter arg on search_businesses
@@ -494,6 +497,7 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 | `pipeline/resolve_review.py` | Auto-settles "Needs review" rows: finds the business's real site (even when the listed link is a listicle), reads the address, promotes KY / drops out-of-state. `--limit N`, `--dry-run`, `--no-serp` | After prepare.py | SerpApi (small) |
 | `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
 | `backup_supabase.py` (repo root) | Dumps `businesses` + `submissions` to `backups/<timestamp>/` as JSON. Paginates at 1000 (PostgREST truncates silently) and exits non-zero on a zero-row dump so a scheduled run cannot fail quietly. Reads URL + service-role key from admin.html. `--prune` reports which backups fall outside retention (last 14 days + the earliest of each month); `--prune --yes` removes them. The scheduled task does not prune. | Before any schema/RLS/grant change; daily via Task Scheduler | Free |
+| `install_monthly_links.ps1` (repo root) | Installs the "PeoplesLedger Monthly Link Check" scheduled task: 10:00 on the 1st of each month (StartWhenAvailable), runs `py -3 pipeline\ledger.py monthly` headless, appends to `data/monthly_links.log`. Uses the `py` launcher so a moved Python cannot break it. `-Uninstall` removes it. Created with schtasks.exe because Register-ScheduledTask rejects a hand-built monthly trigger on PowerShell 5.1. | Once (re-run to update) | Free |
 | `notify_pending.ps1` (repo root) | Windows notification when a new submission is pending. Reads the service-role key from admin.html; announced IDs are in `data/.notify_pending_state.json`. `-Test` shows a sample. Installed as a scheduled task by `install_pending_alert.ps1` (`-Uninstall` to remove). | Every 10 min via Task Scheduler | Free |
 | `pipeline/reconcile_certifications.py` | Lane 2: matches the certifier lists against the live table, backfills `certification_type`, and inserts certified businesses not yet present. Dry-run by default; `--apply` backfills, `--insert-new` also inserts. Matches 85-93 go to a review CSV and are never auto-applied. Needs the service-role key. | As agencies refresh (quarterly) | Free |
 
@@ -657,7 +661,7 @@ Everything routine goes through `python pipeline/ledger.py <verb>`; `docs/mainte
 
 | Task | Command | Frequency |
 |---|---|---|
-| Refresh link statuses | `ledger.py links` | Monthly |
+| Refresh link statuses | Automatic: scheduled task runs `ledger.py monthly` on the 1st (link check + regenerate + push `businesses/`). By hand: `ledger.py links` | Monthly |
 | Start a new cycle | `ledger.py new-cycle` | Quarterly, before scraping |
 | Add new businesses | `ledger.py scrape` | Quarterly (the only month SerpApi needs a paid plan) |
 | Prepare + auto-settle + flag | `ledger.py prep` | After each scrape |
