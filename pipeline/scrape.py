@@ -1094,13 +1094,15 @@ def extract_businesses_from_text(url: str, text: str, type_hint: str = "") -> li
         name = (b.get("business_name") or "").strip()
         if not name:
             continue
-        if not b.get("website"):
-            b["website"] = "/".join(url.split("/")[:3])
-        # The page passed the ownership-signal check, so some ownership language
-        # is present, but not necessarily the specific type the query implied.
-        # Fall back to the general label rather than overclaiming a specific one.
-        if not (b.get("minority_type") or "").strip():
-            b["minority_type"] = "Minority-Owned (general)"
+        # No website found means a blank website. This used to write the SOURCE page's
+        # homepage instead, so every vendor on a roundup "linked" to the roundup: 331 live
+        # listings pointed at someone else's site by October 2026 (30 at
+        # lexingtonweddingexpos.com alone). The source page is already in _query.
+        # No ownership attributed to THIS business stays blank. This used to fall back to
+        # "Minority-Owned (general)" on the reasoning that the page had passed the
+        # ownership-signal check -- but the signal was the page's, not the business's: a
+        # wedding expo run by a queer couple, a chamber's ribbon-cutting list. 163 live
+        # listings carried only that tag by October 2026 (cleaned up by verify_listings.py).
         key = (name.lower(), (b.get("website") or "").lower())
         if key in seen_local:
             continue
