@@ -239,6 +239,10 @@ def best_match(name, cands, address=""):
         got_city = city_of(addr).lower()
         if want_city and got_city and want_city != got_city:
             continue
+        # Neither side has a location: nothing ties the candidate to Kentucky. (Boyd
+        # Electric, LLC, a listing with no address, "matched" a New Jersey company.)
+        if not addr and not want_city:
+            continue
         score = name_score(name, c.get("title") or "")
         if score > best_score:
             best, best_score = c, score
