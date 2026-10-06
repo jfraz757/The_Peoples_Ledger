@@ -128,11 +128,12 @@ function esc(val) {
 
 // ── Fetch all businesses ──────────────────────────────────────────────────────
 
-async function fetchAllBusinesses() {
+async function fetchAllBusinesses(withSelfReported = true) {
   const fields = [
     "id", "business_name", "address", "phone", "website",
     "services_products", "minority_type", "industry",
-    "status", "kentucky_based", "certification_type"
+    "status", "kentucky_based", "certification_type",
+    ...(withSelfReported ? ["self_reported_certification"] : []),
   ].join(",");
 
   let all    = [];
@@ -140,14 +141,23 @@ async function fetchAllBusinesses() {
   const limit = 1000;
 
   while (true) {
-    const url = `${SUPABASE_URL}/rest/v1/businesses?select=${fields}&order=business_name.asc&limit=${limit}&offset=${offset}`;
+    const url = `${SUPABASE_URL}/rest/v1/businesses?select=${fields}&order=business_name.asc,id.asc&limit=${limit}&offset=${offset}`;
     const res = await fetch(url, {
       headers: {
         apikey:        SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
       },
     });
-    if (!res.ok) throw new Error(`Supabase error: ${res.status} ${await res.text()}`);
+    if (!res.ok) {
+      const body = await res.text();
+      // Before add_self_reported_cert.sql has been run the column does not exist. Fall back
+      // rather than fail, so the scheduled monthly run keeps working either way.
+      if (withSelfReported && body.includes("self_reported_certification")) {
+        console.log("  (self_reported_certification column not found -- run add_self_reported_cert.sql)");
+        return fetchAllBusinesses(false);
+      }
+      throw new Error(`Supabase error: ${res.status} ${body}`);
+    }
     const batch = await res.json();
     all = all.concat(batch);
     if (batch.length < limit) break;
@@ -203,6 +213,12 @@ function buildBusinessPage(biz) {
   const certDisplay = certList.filter(c => c !== "Unknown" && c !== "Not Certified");
   const certTags = certDisplay.length
     ? certDisplay.map(c => `<span class="tag tag-cert">${c}</span>`).join("")
+    : "";
+  // Self-reported: stated on the business's own website, not verified by a Kentucky
+  // certifier (see add_self_reported_cert.sql). Its own row and dashed style.
+  const selfList = splitField(raw.self_reported_certification).map(esc);
+  const selfTags = selfList.length
+    ? selfList.map(c => `<span class="tag tag-self">${c} (self-reported)</span>`).join("")
     : "";
 
   // Description for meta tags
@@ -351,6 +367,11 @@ function buildBusinessPage(biz) {
       color: #c4b5fd;
       border: 1px solid rgba(196,181,253,0.3);
     }
+    .tag-self {
+      background: transparent;
+      color: rgba(255,255,255,0.65);
+      border: 1px dashed rgba(255,255,255,0.35);
+    }
 
     /* Detail sections */
     .section {
@@ -478,7 +499,7 @@ function buildBusinessPage(biz) {
   </div>
 
   <!-- Ownership & Certification -->
-  ${(minorityTags || certTags) ? `
+  ${(minorityTags || certTags || selfTags) ? `
   <div class="section">
     <div class="section-title">Ownership &amp; Certification</div>
     ${minorityTags ? `
@@ -490,6 +511,12 @@ function buildBusinessPage(biz) {
     <div class="detail-row">
       <div class="detail-label">Certifications</div>
       <div class="detail-value"><div class="tags-row">${certTags}</div></div>
+    </div>` : ""}
+    ${selfTags ? `
+    <div class="detail-row">
+      <div class="detail-label">Self-reported</div>
+      <div class="detail-value"><div class="tags-row">${selfTags}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:6px;">Stated on the business's own website; not verified by a Kentucky certifier.</div></div>
     </div>` : ""}
   </div>` : ""}
 

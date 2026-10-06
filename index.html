@@ -373,6 +373,9 @@
     .cert-kyfin  { color: #E5A6FF; border-color: rgba(229,166,255,0.55); }  /* KY Finance */
     .cert-shared { color: #FFD700; border-color: rgba(255,215,0,0.45); }    /* HRC + KY Finance */
     .cert-other  { color: rgba(255,255,255,0.55); border-color: rgba(255,255,255,0.3); }
+    /* Self-reported: a certification the business states on its own website, not on any
+       Kentucky certifier's list. Dashed and muted so it never reads as state-verified. */
+    .cert-self   { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.35); border-style: dashed; }
 
     .card-services span {
       color: rgba(255,255,255,0.45);
@@ -1450,6 +1453,7 @@
     SDVOSB: "Service-Disabled Veteran-Owned Small Business",
     DIBE:   "Disability Business Enterprise",
     LGBTBE: "LGBT Business Enterprise",
+    WOSB:   "Woman-Owned Small Business",   // federal (SBA); appears only as self-reported
   };
 
   // ─── STATE ──────────────────────────────────────────────────
@@ -1652,7 +1656,14 @@
         const src = CERT_SOURCE[c] || "other";
         return `<span class="cert-badge cert-${src}" title="${CERT_LABEL[c] || c} — ${CERT_AGENCY[src]}">${c}</span>`;
       }).join("");
-    const certRow = certBadges ? `<div class="card-certs">${certBadges}</div>` : "";
+    // Self-reported certifications: stated on the business's own website, not verified by a
+    // Kentucky certifier. Shown with a dashed badge and "(self-reported)" so they never pass
+    // for the state badges above, and never matched by the State Certification filter.
+    const selfBadges = (b.self_reported_certification || "")
+      .split(",").map(c => c.trim()).filter(Boolean)
+      .map(c => `<span class="cert-badge cert-self" title="${CERT_LABEL[c] || c} — stated on the business's own website; not verified by a Kentucky certifier">${c} (self-reported)</span>`)
+      .join("");
+    const certRow = (certBadges || selfBadges) ? `<div class="card-certs">${certBadges}${selfBadges}</div>` : "";
 
     return `
       <div class="card">
