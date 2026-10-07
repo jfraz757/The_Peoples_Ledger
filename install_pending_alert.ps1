@@ -7,7 +7,8 @@ notify_pending.ps1 every 10 minutes and at logon.
 
 Runs only while you're logged in (a notification needs a desktop to appear on). Won't wake a
 sleeping PC; StartWhenAvailable makes it check as soon as the PC wakes instead.
-conhost --headless keeps a console window from flashing up on every run.
+Launched through pythonw.exe + run_hidden.pyw so no window flashes up on each run. The
+previous `conhost.exe --headless powershell.exe` launch still flashed a window on Windows 11.
 #>
 param([switch]$Uninstall, [int]$Minutes = 10)
 
@@ -21,8 +22,14 @@ if ($Uninstall) {
 
 $script = Join-Path $PSScriptRoot 'notify_pending.ps1'
 
-$action = New-ScheduledTaskAction -Execute 'conhost.exe' `
-    -Argument "--headless powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`"" `
+# pythonw.exe has no console of its own; run_hidden.pyw starts PowerShell with CREATE_NO_WINDOW.
+$pythonw = (Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source
+if (-not $pythonw) { $pythonw = 'C:\Python314\pythonw.exe' }
+if (-not (Test-Path $pythonw)) { throw "pythonw.exe not found; install Python or edit this path." }
+$launcher = Join-Path $PSScriptRoot 'run_hidden.pyw'
+
+$action = New-ScheduledTaskAction -Execute $pythonw `
+    -Argument "`"$launcher`" `"$script`"" `
     -WorkingDirectory $PSScriptRoot
 
 $triggers = @(
