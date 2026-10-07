@@ -215,10 +215,11 @@ function buildBusinessPage(biz) {
     ? certDisplay.map(c => `<span class="tag tag-cert">${c}</span>`).join("")
     : "";
   // Self-reported: stated on the business's own website, not verified by a Kentucky
-  // certifier (see add_self_reported_cert.sql). Its own row and dashed style.
+  // certifier (see add_self_reported_cert.sql). Its own row and a peach split pill.
+  const selfIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z"/></svg>`;
   const selfList = splitField(raw.self_reported_certification).map(esc);
   const selfTags = selfList.length
-    ? selfList.map(c => `<span class="tag tag-self">${c} (self-reported)</span>`).join("")
+    ? selfList.map(c => `<span class="tag tag-self"><span class="tag-self-code">${c}</span><span class="tag-self-note">${selfIcon}Self-reported</span></span>`).join("")
     : "";
 
   // Description for meta tags
@@ -367,11 +368,31 @@ function buildBusinessPage(biz) {
       color: #c4b5fd;
       border: 1px solid rgba(196,181,253,0.3);
     }
+    /* Self-reported certification: peach split pill, "MBE | Self-reported" (same look as the
+       directory cards) -- easy to spot, never mistaken for a state certification. */
     .tag-self {
-      background: transparent;
-      color: rgba(255,255,255,0.65);
-      border: 1px dashed rgba(255,255,255,0.35);
+      display: inline-flex;
+      align-items: stretch;
+      padding: 0;
+      overflow: hidden;
+      background: rgba(255,150,110,0.1);
+      color: #FFB896;
+      border: 1px solid rgba(255,184,150,0.45);
     }
+    .tag-self-code { padding: 3px 8px 3px 10px; }
+    .tag-self-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px 3px 8px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      color: #FFDCCB;
+      background: rgba(255,150,110,0.2);
+      border-left: 1px solid rgba(255,184,150,0.3);
+    }
+    .tag-self-note svg { width: 10px; height: 10px; flex-shrink: 0; }
 
     /* Detail sections */
     .section {
