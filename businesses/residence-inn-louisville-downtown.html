@@ -10,13 +10,13 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Residence Inn Louisville Downtown | The People's Ledger — Kentucky Underrepresented Business Directory</title>
+  <title>Residence Inn Louisville Downtown – Black-Owned Travel and Hospitality Business in Louisville, KY | The People's Ledger</title>
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <meta name="description" content="Residence Inn Louisville Downtown is a Black-Owned business in Travel and Hospitality located in Kentucky. Find contact info, services, and certification details on The People's Ledger." />
+  <meta name="description" content="Residence Inn Louisville Downtown is a Black-Owned business in Travel and Hospitality located in Louisville, Kentucky. Find contact info, services, and certification details on The People's Ledger." />
   <meta property="og:title" content="Residence Inn Louisville Downtown | The People's Ledger" />
-  <meta property="og:description" content="Residence Inn Louisville Downtown is a Black-Owned business in Travel and Hospitality located in Kentucky. Find contact info, services, and certification details on The People's Ledger." />
+  <meta property="og:description" content="Residence Inn Louisville Downtown is a Black-Owned business in Travel and Hospitality located in Louisville, Kentucky. Find contact info, services, and certification details on The People's Ledger." />
   <meta property="og:url" content="https://thepeoplesledger.net/businesses/residence-inn-louisville-downtown" />
   <meta property="og:type" content="website" />
   <link rel="canonical" href="https://thepeoplesledger.net/businesses/residence-inn-louisville-downtown" />
@@ -262,19 +262,49 @@
       .header-card { flex-direction: column; }
       .detail-label { min-width: 90px; }
       .nav-brand { font-size: 12px; }
+      .nav { gap: 0.6rem; padding: 0 1rem; }
+      .nav a.nav-home { display: none; }  /* the brand already links home */
     }
+
+    /* Breadcrumbs, summaries and link lists (business + directory pages) */
+    .crumbs { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 1rem; }
+    .crumbs a { color: rgba(255,215,0,0.8); text-decoration: none; }
+    .crumbs a:hover { text-decoration: underline; }
+    .about-text { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.78); }
+    .page-intro { font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.7); margin-top: 0.5rem; }
+    .link-list { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; }
+    .link-list a {
+      display: inline-block; font-size: 12px; padding: 5px 12px; border-radius: 20px;
+      color: #FFD700; text-decoration: none; border: 1px solid rgba(255,215,0,0.35);
+    }
+    .link-list a:hover { background: #FFD700; color: #111; }
+    .link-list .count { color: rgba(255,255,255,0.45); margin-left: 6px; }
+    .link-list a:hover .count { color: #333; }
+    .biz-list { list-style: none; }
+    .biz-list li { padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .biz-list li:last-child { border-bottom: none; }
+    .biz-list a.biz-name { color: #FFD700; font-weight: 600; text-decoration: none; font-size: 14px; }
+    .biz-list a.biz-name:hover { text-decoration: underline; }
+    .biz-meta { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+    .biz-snippet { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; line-height: 1.5; }
+    .dir-h1 { font-family: 'Michroma', sans-serif; color: #FFD700; font-size: 1.3rem; line-height: 1.4; letter-spacing: 0.03em; }
   </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Residence Inn Louisville Downtown","url":"https://thepeoplesledger.net/businesses/residence-inn-louisville-downtown","sameAs":["https://www.marriott.com/en-us/hotels/sdfgj-residence-inn-louisville-downtown/overview/?scid=f2ae0541-1279-4f24-b197-a979c79310b0"],"telephone":"(502) 589-8998","address":"333 E Market St, Louisville, KY 40202","description":"Extended-stay hotel offering suite-style accommodations in downtown Louisville, KY, with amenities designed for longer visits.","knowsAbout":["Travel and Hospitality"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Directory","item":"https://thepeoplesledger.net/directory/"},{"@type":"ListItem","position":2,"name":"Louisville","item":"https://thepeoplesledger.net/directory/louisville"},{"@type":"ListItem","position":3,"name":"Residence Inn Louisville Downtown","item":"https://thepeoplesledger.net/businesses/residence-inn-louisville-downtown"}]}</script>
 </head>
 <body>
 
 <nav class="nav">
   <a class="nav-brand" href="https://thepeoplesledger.net/">The People's Ledger</a>
   <div class="nav-spacer"></div>
-  <a class="nav-link" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link nav-home" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link" href="https://thepeoplesledger.net/directory/">Browse</a>
   <a class="nav-link" href="https://thepeoplesledger.net/about">About</a>
 </nav>
 
 <div class="container">
+
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="https://thepeoplesledger.net/directory/">Directory</a> › <a href="https://thepeoplesledger.net/directory/louisville">Louisville</a> › Residence Inn Louisville Downtown</nav>
 
   <!-- Header -->
   <div class="header-card">
@@ -326,11 +356,31 @@
     
   </div>
 
+  <!-- About -->
+  <div class="section">
+    <div class="section-title">About</div>
+    <p class="about-text">Residence Inn Louisville Downtown is a Black-owned business in the Travel and Hospitality industry, based in Louisville, Kentucky. It is listed in The People's Ledger, a directory of Black-owned, women-owned, veteran-owned, and other underrepresented businesses in Kentucky.</p>
+  </div>
+
   <!-- Services -->
   
   <div class="section">
     <div class="section-title">Services &amp; Products</div>
     <div class="services-text">Extended-stay hotel offering suite-style accommodations in downtown Louisville, KY, with amenities designed for longer visits.</div>
+  </div>
+
+  
+  <!-- Similar businesses -->
+  <div class="section">
+    <div class="section-title">Similar Businesses</div>
+    <ul class="biz-list"><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/affordable-luxe-events">AFFORDABLE LUXE Events</a><div class="biz-meta">Louisville · Travel and Hospitality · Women-Owned · Black-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/louisville-food-tours">Louisville Food Tours</a><div class="biz-meta">Louisville · Travel and Hospitality · Women-Owned · Latine-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/pride-business-enterprises">Pride Business Enterprises</a><div class="biz-meta">Louisville · Travel and Hospitality · LGBTQ+-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/stellar-suites">Stellar Suites</a><div class="biz-meta">Louisville · Travel and Hospitality · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/the-myriad-hotel">The Myriad Hotel</a><div class="biz-meta">Louisville · Travel and Hospitality · LGBTQ+-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/woman-owned-wallet">Woman-Owned Wallet</a><div class="biz-meta">Louisville · Travel and Hospitality · Women-Owned</div></li></ul>
+  </div>
+
+  
+  <!-- Explore -->
+  <div class="section">
+    <div class="section-title">Explore the Directory</div>
+    <ul class="link-list"><li><a href="https://thepeoplesledger.net/directory/black-owned-louisville">Black-Owned in Louisville<span class="count">190</span></a></li><li><a href="https://thepeoplesledger.net/directory/travel-and-hospitality-louisville">Travel and Hospitality in Louisville<span class="count">7</span></a></li><li><a href="https://thepeoplesledger.net/directory/louisville">Louisville<span class="count">600</span></a></li><li><a href="https://thepeoplesledger.net/directory/black-owned">Black-Owned<span class="count">525</span></a></li><li><a href="https://thepeoplesledger.net/directory/travel-and-hospitality">Travel and Hospitality<span class="count">34</span></a></li><li><a href="https://thepeoplesledger.net/directory/black-owned-travel-and-hospitality">Black-Owned Travel and Hospitality<span class="count">10</span></a></li></ul>
   </div>
 
   <!-- CTA -->
@@ -344,6 +394,7 @@
 
 <footer class="footer">
   &copy; 2025 The People's Ledger &nbsp;|&nbsp; Operated by Education to Action LLC &nbsp;|&nbsp;
+  <a href="https://thepeoplesledger.net/directory/">Browse the Directory</a> &nbsp;|&nbsp;
   <a href="https://thepeoplesledger.net/about">About</a>
   <br /><br />
   Money Talks. Spend Where It Counts.

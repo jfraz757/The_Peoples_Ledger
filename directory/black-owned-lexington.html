@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xr6q4yw2ld");
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Black-Owned Businesses in Lexington, KY | The People's Ledger</title>
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="description" content="Browse 83 black-owned businesses in Lexington, Kentucky, with contact details, ownership, and certifications. Part of The People's Ledger, Kentucky's directory of underrepresented businesses." />
+  <meta property="og:title" content="Black-Owned Businesses in Lexington, KY | The People's Ledger" />
+  <meta property="og:description" content="Browse 83 black-owned businesses in Lexington, Kentucky, with contact details, ownership, and certifications. Part of The People's Ledger, Kentucky's directory of underrepresented businesses." />
+  <meta property="og:url" content="https://thepeoplesledger.net/directory/black-owned-lexington" />
+  <meta property="og:type" content="website" />
+  <link rel="canonical" href="https://thepeoplesledger.net/directory/black-owned-lexington" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #1a1a1a;
+      color: rgba(255,255,255,0.78);
+      min-height: 100vh;
+    }
+
+    /* Nav */
+    .nav {
+      background: rgba(30,30,30,0.92);
+      border-bottom: 1px solid rgba(255,215,0,0.2);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-family: 'Michroma', sans-serif;
+      color: #FFD700;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .nav-spacer { flex: 1; }
+    .nav a.nav-link {
+      color: #FFD700;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,215,0,0.5);
+      white-space: nowrap;
+      transition: background 0.2s, color 0.2s;
+    }
+    .nav a.nav-link:hover {
+      background: #FFD700;
+      color: #111;
+    }
+
+    /* Container */
+    .container {
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1.25rem;
+    }
+
+    /* Header card */
+    .header-card {
+      background: rgba(30,30,30,0.85);
+      border: 1px solid rgba(255,215,0,0.2);
+      border-left: 4px solid #FFD700;
+      border-radius: 14px;
+      padding: 1.75rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .header-card img.favicon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .header-card h1 {
+      font-family: 'Michroma', sans-serif;
+      color: #FFD700;
+      font-size: 1.35rem;
+      letter-spacing: 0.04em;
+      line-height: 1.3;
+      margin-bottom: 0.5rem;
+    }
+    .header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    /* Badges */
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .badge-active   { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+    .badge-inactive { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+    .badge-nosite   { background: rgba(156,163,175,0.15); color: #9ca3af; border: 1px solid rgba(156,163,175,0.3); }
+
+    /* Tags */
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255,215,0,0.1);
+      color: #FFD700;
+      border: 1px solid rgba(255,215,0,0.3);
+    }
+    .tag-cert {
+      background: rgba(167,139,250,0.1);
+      color: #c4b5fd;
+      border: 1px solid rgba(196,181,253,0.3);
+    }
+    /* Self-reported certification: peach split pill, "MBE | Self-reported" (same look as the
+       directory cards) -- easy to spot, never mistaken for a state certification. */
+    .tag-self {
+      display: inline-flex;
+      align-items: stretch;
+      padding: 0;
+      overflow: hidden;
+      background: rgba(255,150,110,0.1);
+      color: #FFB896;
+      border: 1px solid rgba(255,184,150,0.45);
+    }
+    .tag-self-code { padding: 3px 8px 3px 10px; }
+    .tag-self-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px 3px 8px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      color: #FFDCCB;
+      background: rgba(255,150,110,0.2);
+      border-left: 1px solid rgba(255,184,150,0.3);
+    }
+    .tag-self-note svg { width: 10px; height: 10px; flex-shrink: 0; }
+
+    /* Detail sections */
+    .section {
+      background: rgba(30,30,30,0.85);
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .section-title {
+      font-family: 'Michroma', sans-serif;
+      color: #FFD700;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .detail-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      align-items: flex-start;
+    }
+    .detail-row:last-child { margin-bottom: 0; }
+    .detail-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      min-width: 110px;
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+    .detail-value {
+      font-size: 14px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.5;
+    }
+    .detail-value a {
+      color: #FFD700;
+      text-decoration: none;
+    }
+    .detail-value a:hover { text-decoration: underline; }
+
+    .tags-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    /* Services */
+    .services-text {
+      font-size: 14px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.7;
+    }
+
+    /* CTA */
+    .cta {
+      background: rgba(30,30,30,0.85);
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 14px;
+      padding: 1.5rem;
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+    .cta p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 1rem;
+    }
+    .btn {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 22px;
+      border-radius: 20px;
+      text-decoration: none;
+      border: 1px solid #FFD700;
+      color: #FFD700;
+      background: transparent;
+      margin: 0 6px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .btn:hover { background: #FFD700; color: #111; }
+    .btn-primary { background: #FFD700; color: #111; }
+    .btn-primary:hover { background: #e6c200; border-color: #e6c200; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      padding: 2rem 0;
+    }
+    .footer a { color: rgba(255,255,255,0.4); text-decoration: none; }
+    .footer a:hover { color: #FFD700; }
+
+    @media (max-width: 600px) {
+      .header-card { flex-direction: column; }
+      .detail-label { min-width: 90px; }
+      .nav-brand { font-size: 12px; }
+      .nav { gap: 0.6rem; padding: 0 1rem; }
+      .nav a.nav-home { display: none; }  /* the brand already links home */
+    }
+
+    /* Breadcrumbs, summaries and link lists (business + directory pages) */
+    .crumbs { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 1rem; }
+    .crumbs a { color: rgba(255,215,0,0.8); text-decoration: none; }
+    .crumbs a:hover { text-decoration: underline; }
+    .about-text { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.78); }
+    .page-intro { font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.7); margin-top: 0.5rem; }
+    .link-list { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; }
+    .link-list a {
+      display: inline-block; font-size: 12px; padding: 5px 12px; border-radius: 20px;
+      color: #FFD700; text-decoration: none; border: 1px solid rgba(255,215,0,0.35);
+    }
+    .link-list a:hover { background: #FFD700; color: #111; }
+    .link-list .count { color: rgba(255,255,255,0.45); margin-left: 6px; }
+    .link-list a:hover .count { color: #333; }
+    .biz-list { list-style: none; }
+    .biz-list li { padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .biz-list li:last-child { border-bottom: none; }
+    .biz-list a.biz-name { color: #FFD700; font-weight: 600; text-decoration: none; font-size: 14px; }
+    .biz-list a.biz-name:hover { text-decoration: underline; }
+    .biz-meta { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+    .biz-snippet { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; line-height: 1.5; }
+    .dir-h1 { font-family: 'Michroma', sans-serif; color: #FFD700; font-size: 1.3rem; line-height: 1.4; letter-spacing: 0.03em; }
+  </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Black-Owned Businesses in Lexington, KY","url":"https://thepeoplesledger.net/directory/black-owned-lexington","description":"Browse 83 black-owned businesses in Lexington, Kentucky, with contact details, ownership, and certifications. Part of The People's Ledger, Kentucky's directory of underrepresented businesses.","mainEntity":{"@type":"ItemList","numberOfItems":83,"itemListElement":[{"@type":"ListItem","position":1,"url":"https://thepeoplesledger.net/businesses/859-social-club-soul-food-restaurant","name":"859 Social Club Soul Food Restaurant"},{"@type":"ListItem","position":2,"url":"https://thepeoplesledger.net/businesses/adbi-studios","name":"ADBI Studios"},{"@type":"ListItem","position":3,"url":"https://thepeoplesledger.net/businesses/adrian-s-barbershop","name":"Adrian's Barbershop"},{"@type":"ListItem","position":4,"url":"https://thepeoplesledger.net/businesses/ahava-center-for-spiritual-living","name":"Ahava Center For Spiritual Living"},{"@type":"ListItem","position":5,"url":"https://thepeoplesledger.net/businesses/albert-couture-specialties","name":"Albert Couture Specialties"},{"@type":"ListItem","position":6,"url":"https://thepeoplesledger.net/businesses/alfalfa-restaurant","name":"Alfalfa Restaurant"},{"@type":"ListItem","position":7,"url":"https://thepeoplesledger.net/businesses/alfalfa-s","name":"Alfalfa'S"},{"@type":"ListItem","position":8,"url":"https://thepeoplesledger.net/businesses/am-design-collective","name":"AM Design Collective"},{"@type":"ListItem","position":9,"url":"https://thepeoplesledger.net/businesses/as-massage","name":"Asé Massage"},{"@type":"ListItem","position":10,"url":"https://thepeoplesledger.net/businesses/atayeelas-beauty-creations","name":"Atayeelas Beauty Creations"},{"@type":"ListItem","position":11,"url":"https://thepeoplesledger.net/businesses/auroraallure-salon","name":"AuroraAllure Salon"},{"@type":"ListItem","position":12,"url":"https://thepeoplesledger.net/businesses/beauti-lounge-876","name":"Beauti Lounge 876"},{"@type":"ListItem","position":13,"url":"https://thepeoplesledger.net/businesses/benefit-for-veterans-life-insurance-real-estate","name":"Benefit for Veterans (Life Insurance & Real Estate)"},{"@type":"ListItem","position":14,"url":"https://thepeoplesledger.net/businesses/black-soil","name":"Black Soil"},{"@type":"ListItem","position":15,"url":"https://thepeoplesledger.net/businesses/black-soil-ky-charitable-fund-inc","name":"Black Soil KY Charitable Fund, Inc."},{"@type":"ListItem","position":16,"url":"https://thepeoplesledger.net/businesses/brooks-bbq-2","name":"Brooks BBQ 2"},{"@type":"ListItem","position":17,"url":"https://thepeoplesledger.net/businesses/budget-site-materials","name":"Budget Site Materials"},{"@type":"ListItem","position":18,"url":"https://thepeoplesledger.net/businesses/built-by-bill-transmission-engine-repair-llc","name":"Built By Bill Transmission & Engine Repair LLC"},{"@type":"ListItem","position":19,"url":"https://thepeoplesledger.net/businesses/business-of-barbering-institute","name":"Business of Barbering Institute"},{"@type":"ListItem","position":20,"url":"https://thepeoplesledger.net/businesses/cakes-with-an-attitude","name":"Cakes With An Attitude"},{"@type":"ListItem","position":21,"url":"https://thepeoplesledger.net/businesses/carolyn-s-crown-glory-hair-salon-llc","name":"CAROLYN'S CROWN & GLORY HAIR SALON, LLC"},{"@type":"ListItem","position":22,"url":"https://thepeoplesledger.net/businesses/charles-young-center","name":"Charles Young Center"},{"@type":"ListItem","position":23,"url":"https://thepeoplesledger.net/businesses/comfortable-living-medicaid-waiver-services","name":"Comfortable Living - Medicaid Waiver Services"},{"@type":"ListItem","position":24,"url":"https://thepeoplesledger.net/businesses/daw-cleaning-service-llc","name":"DAW CLEANING SERVICE, LLC"},{"@type":"ListItem","position":25,"url":"https://thepeoplesledger.net/businesses/dee-s-detail-shop","name":"Dee's Detail Shop"},{"@type":"ListItem","position":26,"url":"https://thepeoplesledger.net/businesses/dee-z-bowtie-s","name":"Dee'z Bowtie's"},{"@type":"ListItem","position":27,"url":"https://thepeoplesledger.net/businesses/ehi-consultants","name":"EHI CONSULTANTS"},{"@type":"ListItem","position":28,"url":"https://thepeoplesledger.net/businesses/elaine-allen-llc","name":"ELAINE ALLEN, LLC"},{"@type":"ListItem","position":29,"url":"https://thepeoplesledger.net/businesses/euphoric-beauty-studio","name":"Euphoric Beauty Studio"},{"@type":"ListItem","position":30,"url":"https://thepeoplesledger.net/businesses/exclusiv-urban","name":"Exclusiv Urban"},{"@type":"ListItem","position":31,"url":"https://thepeoplesledger.net/businesses/facility-maintenance-services-group-llc","name":"FACILITY MAINTENANCE & SERVICES GROUP, LLC"},{"@type":"ListItem","position":32,"url":"https://thepeoplesledger.net/businesses/faimarket","name":"Faimarket"},{"@type":"ListItem","position":33,"url":"https://thepeoplesledger.net/businesses/fresh-bourbon-distilling-co","name":"Fresh Bourbon Distilling Co."},{"@type":"ListItem","position":34,"url":"https://thepeoplesledger.net/businesses/granville-hr-consulting-llc","name":"GRANVILLE HR CONSULTING, LLC"},{"@type":"ListItem","position":35,"url":"https://thepeoplesledger.net/businesses/grasstograce-african-cuisine","name":"GrassToGrace African Cuisine"},{"@type":"ListItem","position":36,"url":"https://thepeoplesledger.net/businesses/halligans-bar-and-grill","name":"Halligans Bar and Grill"},{"@type":"ListItem","position":37,"url":"https://thepeoplesledger.net/businesses/hawkins-taylor-funeral-home","name":"Hawkins-Taylor Funeral Home"},{"@type":"ListItem","position":38,"url":"https://thepeoplesledger.net/businesses/honeysage-photo-co","name":"Honeysage Photo Co"},{"@type":"ListItem","position":39,"url":"https://thepeoplesledger.net/businesses/indi-s-chicken","name":"Indi's Chicken"},{"@type":"ListItem","position":40,"url":"https://thepeoplesledger.net/businesses/indi-s-fast-food","name":"Indi's Fast Food"},{"@type":"ListItem","position":41,"url":"https://thepeoplesledger.net/businesses/instabrakes-l-l-c","name":"InstaBrakes, L.L.C."},{"@type":"ListItem","position":42,"url":"https://thepeoplesledger.net/businesses/integrity-insurance-group-llc","name":"Integrity Insurance Group, LLC"},{"@type":"ListItem","position":43,"url":"https://thepeoplesledger.net/businesses/jack-s-sandbar-grill","name":"Jack's Sandbar & Grill"},{"@type":"ListItem","position":44,"url":"https://thepeoplesledger.net/businesses/jackson-s-car-detailing-services","name":"Jackson's Car Detailing Services"},{"@type":"ListItem","position":45,"url":"https://thepeoplesledger.net/businesses/jambo-multiservice","name":"JAMBO Multiservice"},{"@type":"ListItem","position":46,"url":"https://thepeoplesledger.net/businesses/jasmine-rice-thai-restaurant","name":"Jasmine Rice Thai Restaurant"},{"@type":"ListItem","position":47,"url":"https://thepeoplesledger.net/businesses/jessica-s-body-boutique","name":"Jessica's body Boutique"},{"@type":"ListItem","position":48,"url":"https://thepeoplesledger.net/businesses/joella-s-hot-chicken-lexington-franchise","name":"Joella'S Hot Chicken (Lexington Franchise)"},{"@type":"ListItem","position":49,"url":"https://thepeoplesledger.net/businesses/judy-hair-braiding","name":"Judy hair braiding"},{"@type":"ListItem","position":50,"url":"https://thepeoplesledger.net/businesses/julia-beauty-african-braiding","name":"Julia beauty african braiding"},{"@type":"ListItem","position":51,"url":"https://thepeoplesledger.net/businesses/julietta-market","name":"Julietta Market"},{"@type":"ListItem","position":52,"url":"https://thepeoplesledger.net/businesses/k-hayes-limited","name":"K. HAYES LIMITED"},{"@type":"ListItem","position":53,"url":"https://thepeoplesledger.net/businesses/karibu-international-market","name":"Karibu International market"},{"@type":"ListItem","position":54,"url":"https://thepeoplesledger.net/businesses/kentucky-blended-nutrition","name":"Kentucky Blended Nutrition"},{"@type":"ListItem","position":55,"url":"https://thepeoplesledger.net/businesses/l-c-management-inc","name":"L & C MANAGEMENT, INC."},{"@type":"ListItem","position":56,"url":"https://thepeoplesledger.net/businesses/leanfeast","name":"LeanFeast"},{"@type":"ListItem","position":57,"url":"https://thepeoplesledger.net/businesses/lestar-mineral-development-inc","name":"LESTAR MINERAL DEVELOPMENT, INC."},{"@type":"ListItem","position":58,"url":"https://thepeoplesledger.net/businesses/little-black-dress-catering","name":"Little Black Dress Catering"},{"@type":"ListItem","position":59,"url":"https://thepeoplesledger.net/businesses/mister-s-protective-services","name":"MISTER S PROTECTIVE SERVICES"},{"@type":"ListItem","position":60,"url":"https://thepeoplesledger.net/businesses/moody-mike-s","name":"Moody Mike's"},{"@type":"ListItem","position":61,"url":"https://thepeoplesledger.net/businesses/mr-krabs-bean-s-bbq","name":"Mr. Krabs & Bean's BBQ"},{"@type":"ListItem","position":62,"url":"https://thepeoplesledger.net/businesses/never-too-much","name":"Never Too Much"},{"@type":"ListItem","position":63,"url":"https://thepeoplesledger.net/businesses/our-magic-years-childcare-center","name":"Our Magic Years Childcare Center"},{"@type":"ListItem","position":64,"url":"https://thepeoplesledger.net/businesses/rj-jewelers","name":"Rj Jewelers"},{"@type":"ListItem","position":65,"url":"https://thepeoplesledger.net/businesses/s-and-c-market-and-deli","name":"S and C Market and Deli"},{"@type":"ListItem","position":66,"url":"https://thepeoplesledger.net/businesses/s-and-d-construction-management-inc","name":"S and D CONSTRUCTION MANAGEMENT, INC."},{"@type":"ListItem","position":67,"url":"https://thepeoplesledger.net/businesses/sassy-bleu","name":"Sassy Bleu"},{"@type":"ListItem","position":68,"url":"https://thepeoplesledger.net/businesses/sealinglife-technology","name":"SealingLife Technology"},{"@type":"ListItem","position":69,"url":"https://thepeoplesledger.net/businesses/sli-contracting","name":"SLI CONTRACTING"},{"@type":"ListItem","position":70,"url":"https://thepeoplesledger.net/businesses/smart-braids","name":"Smart Braids"},{"@type":"ListItem","position":71,"url":"https://thepeoplesledger.net/businesses/soulfeast-week","name":"SoulFeast Week"},{"@type":"ListItem","position":72,"url":"https://thepeoplesledger.net/businesses/tas-development-llc","name":"TAS DEVELOPMENT, LLC"},{"@type":"ListItem","position":73,"url":"https://thepeoplesledger.net/businesses/the-black-phoenix-co","name":"The Black Phoenix Co"},{"@type":"ListItem","position":74,"url":"https://thepeoplesledger.net/businesses/the-melroy","name":"The Melroy"},{"@type":"ListItem","position":75,"url":"https://thepeoplesledger.net/businesses/the-perfect-spot","name":"The Perfect Spot"},{"@type":"ListItem","position":76,"url":"https://thepeoplesledger.net/businesses/the-wandering-speakeasy","name":"The Wandering Speakeasy"},{"@type":"ListItem","position":77,"url":"https://thepeoplesledger.net/businesses/the-wedding-nanny-co","name":"The Wedding Nanny Co."},{"@type":"ListItem","position":78,"url":"https://thepeoplesledger.net/businesses/thea-s-bass-and-biddy-kitchen-l-l-c","name":"Thea's Bass and Biddy Kitchen L.L.C."},{"@type":"ListItem","position":79,"url":"https://thepeoplesledger.net/businesses/thick-madame-s-beauty-bar-llc","name":"THICK MADAME'S BEAUTY BAR LLC"},{"@type":"ListItem","position":80,"url":"https://thepeoplesledger.net/businesses/tthawkins-transportation-llc","name":"TTHawkins Transportation LLC"},{"@type":"ListItem","position":81,"url":"https://thepeoplesledger.net/businesses/vip-childcare","name":"VIP Childcare"},{"@type":"ListItem","position":82,"url":"https://thepeoplesledger.net/businesses/warner-transportation-llc","name":"WARNER TRANSPORTATION, LLC"},{"@type":"ListItem","position":83,"url":"https://thepeoplesledger.net/businesses/winners-circle-liquors","name":"Winners Circle Liquors"}]}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Directory","item":"https://thepeoplesledger.net/directory/"},{"@type":"ListItem","position":2,"name":"Lexington","item":"https://thepeoplesledger.net/directory/lexington"},{"@type":"ListItem","position":3,"name":"Black-Owned in Lexington","item":"https://thepeoplesledger.net/directory/black-owned-lexington"}]}</script>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-brand" href="https://thepeoplesledger.net/">The People's Ledger</a>
+  <div class="nav-spacer"></div>
+  <a class="nav-link nav-home" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link" href="https://thepeoplesledger.net/directory/">Browse</a>
+  <a class="nav-link" href="https://thepeoplesledger.net/about">About</a>
+</nav>
+
+<div class="container">
+
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="https://thepeoplesledger.net/directory/">Directory</a> › <a href="https://thepeoplesledger.net/directory/lexington">Lexington</a> › Black-Owned in Lexington</nav>
+
+  <div class="header-card">
+    <div style="min-width:0;flex:1;">
+      <h1 class="dir-h1">Black-Owned Businesses in Lexington, KY</h1>
+      <p class="page-intro">The People's Ledger lists 83 black-owned businesses in Lexington, Kentucky. Each listing links to the business's own page with its address, phone, website, ownership, and any certifications. Know a business that should be here? <a href="https://thepeoplesledger.net/" style="color:#FFD700;">Submit it from the directory</a>.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">83 Businesses</div>
+    <ul class="biz-list"><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/859-social-club-soul-food-restaurant">859 Social Club Soul Food Restaurant</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Soul food restaurant serving classic Southern comfort food dishes in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/adbi-studios">ADBI Studios</a><div class="biz-meta">Lexington · Arts and Entertainment · Black-Owned</div><div class="biz-snippet">ADBI Studios likely offers creative arts and entertainment services such as photography, videography, graphic design, or multimedia production. As a…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/adrian-s-barbershop">Adrian's Barbershop</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned</div><div class="biz-snippet">Barbershop offering haircuts and grooming services for men and boys, located in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/ahava-center-for-spiritual-living">Ahava Center For Spiritual Living</a><div class="biz-meta">Lexington · Non-Profit and Social Services · Black-Owned</div><div class="biz-snippet">Ahava Center For Spiritual Living likely provides spiritual care, community worship, and personal growth programs rooted in faith-based principles. As a…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/albert-couture-specialties">Albert Couture Specialties</a><div class="biz-meta">Lexington · Retail and E-Commerce · Black-Owned</div><div class="biz-snippet">Modern craftsmanship in suiting</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/alfalfa-restaurant">Alfalfa Restaurant</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Alfalfa Restaurant is a restaurant located in Lexington, Kentucky, offering dining to customers in the 40507 area.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/alfalfa-s">Alfalfa'S</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">There is a well-known Alfalfa's Market in Boulder, Colorado, which is a natural and organic grocery store. However, the business described here is located…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/am-design-collective">AM Design Collective</a><div class="biz-meta">Lexington · Arts and Entertainment · LGBTQ+-Owned · Black-Owned</div><div class="biz-snippet">Event planning and design, weddings, events, seasonal décor</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/as-massage">Asé Massage</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned · Women-Owned</div><div class="biz-snippet">Massage therapy studio offering professional massage services at a convenient location in Lexington, KY.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/atayeelas-beauty-creations">Atayeelas Beauty Creations</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned</div><div class="biz-snippet">Eyebrow specialist offering brow shaping, grooming, and related beauty services in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/auroraallure-salon">AuroraAllure Salon</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned</div><div class="biz-snippet">Hair salon offering beauty and wellness services in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/beauti-lounge-876">Beauti Lounge 876</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned · Women-Owned</div><div class="biz-snippet">Beauty salon and wellness lounge offering personal care and beauty services in a studio suite setting.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/benefit-for-veterans-life-insurance-real-estate">Benefit for Veterans (Life Insurance &amp; Real Estate)</a><div class="biz-meta">Lexington · Insurance and Risk Management · Black-Owned · Veteran-Owned</div><div class="biz-snippet">Life insurance agency and real estate services firm specializing in serving veterans. Located in Lexington, KY, the business helps veterans navigate life…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/black-soil">Black Soil</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Agribusiness linking individuals and families with Black growers and producers; CSA (Community Supported Agriculture) program; farm-to-table dinners; farm…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/black-soil-ky-charitable-fund-inc">Black Soil KY Charitable Fund, Inc.</a><div class="biz-meta">Lexington · Non-Profit and Social Services · Black-Owned</div><div class="biz-snippet">Black Soil KY Charitable Fund, Inc. is a nonprofit organization based in Lexington, Kentucky that likely provides charitable funding, grants, or community…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/brooks-bbq-2">Brooks BBQ 2</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Barbecue restaurant serving smoked meats and classic BBQ fare in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/budget-site-materials">Budget Site Materials</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned · Latine-Owned · Women-Owned · Asian-Owned</div><div class="biz-snippet">Building materials supplier offering construction and remodeling supplies at budget-friendly prices, serving contractors and homeowners in the Lexington, KY…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/built-by-bill-transmission-engine-repair-llc">Built By Bill Transmission &amp; Engine Repair LLC</a><div class="biz-meta">Lexington · Logistics and Transportation · Black-Owned</div><div class="biz-snippet">Auto repair shop specializing in transmission and engine repair services, serving customers in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/business-of-barbering-institute">Business of Barbering Institute</a><div class="biz-meta">Lexington · Education and Training · Black-Owned</div><div class="biz-snippet">The Business of Barbering Institute provides professional barber training and education, offering programs designed to prepare students for licensure and…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/cakes-with-an-attitude">Cakes With An Attitude</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Bakery and candy shop specializing in custom cakes, desserts, and sweets, serving customers in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/carolyn-s-crown-glory-hair-salon-llc">CAROLYN'S CROWN &amp; GLORY HAIR SALON, LLC</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned · Women-Owned</div><div class="biz-snippet">Related Services: 812112 - Specializing in Beautician services; Beauty and barber shops; Beauty parlors; Beauty salons; Beauty shops; Cosmetology salons or…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/charles-young-center">Charles Young Center</a><div class="biz-meta">Lexington · Non-Profit and Social Services · Black-Owned</div><div class="biz-snippet">Community center providing social services and programs to residents of Lexington, Kentucky, operating as a nonprofit organization.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/comfortable-living-medicaid-waiver-services">Comfortable Living - Medicaid Waiver Services</a><div class="biz-meta">Lexington · Non-Profit and Social Services · Black-Owned · Women-Owned</div><div class="biz-snippet">Medicaid waiver services provider offering support and assistance to individuals who qualify for Medicaid-funded programs. Helps eligible clients access…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/daw-cleaning-service-llc">DAW CLEANING SERVICE, LLC</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned</div><div class="biz-snippet">Related Services: 238990 - Specializing in brick driveway contractors (pressure washing); brick paver contractors (e.g. driveways, patios, sidewalks…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/dee-s-detail-shop">Dee's Detail Shop</a><div class="biz-meta">Lexington · Logistics and Transportation · Black-Owned</div><div class="biz-snippet">Car wash and auto detailing shop offering cleaning and detailing services for vehicles, located in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/dee-z-bowtie-s">Dee'z Bowtie's</a><div class="biz-meta">Lexington · Retail and E-Commerce · Black-Owned</div><div class="biz-snippet">Men's accessories retailer specializing in bowties and related neckwear, serving customers in Lexington, Kentucky, with both in-person and online shopping…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/ehi-consultants">EHI CONSULTANTS</a><div class="biz-meta">Lexington · Architecture and Engineering · Black-Owned</div><div class="biz-snippet">Consultant: 541330 - Specializing in Civil engineering services, Construction engineering services, Consulting engineers' offices, Consulting engineers'…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/elaine-allen-llc">ELAINE ALLEN, LLC</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned</div><div class="biz-snippet">Related Services: 236210 - Specializing in Addition, alteration and renovation - For-Sale builders, Industrial building (except warehouses) construction;…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/euphoric-beauty-studio">Euphoric Beauty Studio</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned · Women-Owned</div><div class="biz-snippet">Skincare and makeup studio specializing in bridal skin prep and event beauty</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/exclusiv-urban">Exclusiv Urban</a><div class="biz-meta">Lexington · Real Estate and Property Management · Black-Owned</div><div class="biz-snippet">Real estate and property management company focused on urban properties in the Lexington, Kentucky area.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/facility-maintenance-services-group-llc">FACILITY MAINTENANCE &amp; SERVICES GROUP, LLC</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned</div><div class="biz-snippet">Related Services: 238320 - Specializing in Electrostatic painting, on-site, contractors, House painting, Paint and wallpaper stripping, Painting (except…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/faimarket">Faimarket</a><div class="biz-meta">Lexington · Retail and E-Commerce · Black-Owned</div><div class="biz-snippet">Faimarket is a retail and e-commerce business that likely offers a variety of consumer goods and products available for purchase both in-store and online.…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/fresh-bourbon-distilling-co">Fresh Bourbon Distilling Co.</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Bourbon and whiskey distillery, tours, guided tastings, event space</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/granville-hr-consulting-llc">GRANVILLE HR CONSULTING, LLC</a><div class="biz-meta">Lexington · Human Resources and DEI · Black-Owned · Women-Owned</div><div class="biz-snippet">Consultant: 541611 - Background check services, Background Investigation services, EEO Investigative Services, Fingerprint services, and Workplace…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/grasstograce-african-cuisine">GrassToGrace African Cuisine</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned · Women-Owned</div><div class="biz-snippet">GrassToGrace African Cuisine is a restaurant offering authentic African dishes and culinary experiences, serving traditional meals inspired by African food…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/halligans-bar-and-grill">Halligans Bar and Grill</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned · Women-Owned</div><div class="biz-snippet">Bar and grill serving food and drinks in Lexington, KY. Halligans offers a casual dining and bar experience with a menu of American-style food alongside…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/hawkins-taylor-funeral-home">Hawkins-Taylor Funeral Home</a><div class="biz-meta">Lexington · Other Professional Services · Black-Owned</div><div class="biz-snippet">Funeral home providing funeral services to families in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/honeysage-photo-co">Honeysage Photo Co</a><div class="biz-meta">Lexington · Arts and Entertainment · Black-Owned · Women-Owned</div><div class="biz-snippet">Wedding photography and content creation</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/indi-s-chicken">Indi's Chicken</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Chicken restaurant serving chicken-focused dishes and meals. Located in Lexington, KY, Indi's Chicken offers a casual dining experience centered around…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/indi-s-fast-food">Indi's Fast Food</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Fast food restaurant serving quick-service meals in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/instabrakes-l-l-c">InstaBrakes, L.L.C.</a><div class="biz-meta">Lexington · Logistics and Transportation · Black-Owned</div><div class="biz-snippet">InstaBrakes, L.L.C. likely provides brake repair, maintenance, and related automotive services for commercial and personal vehicles used in logistics and…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/integrity-insurance-group-llc">Integrity Insurance Group, LLC</a><div class="biz-meta">Lexington · Insurance and Risk Management · Black-Owned</div><div class="biz-snippet">Integrity Insurance Group, LLC likely offers a range of personal and commercial insurance products, including coverage for auto, home, life, and business…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/jack-s-sandbar-grill">Jack's Sandbar &amp; Grill</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Jack's Sandbar &amp; Grill is a restaurant and bar that likely offers casual dining with a menu of sandwiches, burgers, seafood, and grilled entrées, along with…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/jackson-s-car-detailing-services">Jackson's Car Detailing Services</a><div class="biz-meta">Lexington · Other Professional Services · Black-Owned</div><div class="biz-snippet">Jackson's Car Detailing Services provides professional automotive detailing services, including interior and exterior cleaning, polishing, and…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/jambo-multiservice">JAMBO Multiservice</a><div class="biz-meta">Lexington · Other Professional Services · Black-Owned</div><div class="biz-snippet">Multiservice business offering a range of professional services to individuals and businesses in the Lexington area. Services may include assistance with…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/jasmine-rice-thai-restaurant">Jasmine Rice Thai Restaurant</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Jasmine Rice Thai Restaurant is a dining establishment specializing in Thai cuisine, likely offering traditional dishes such as pad thai, curries, soups,…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/jessica-s-body-boutique">Jessica's body Boutique</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned</div><div class="biz-snippet">Jessica's Body Boutique likely offers personal care and wellness services such as body treatments, skincare, and beauty services. The business may also…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/joella-s-hot-chicken-lexington-franchise">Joella'S Hot Chicken (Lexington Franchise)</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Joella's Hot Chicken is a fast-casual restaurant franchise specializing in Nashville-style hot chicken, offering fried chicken in a range of heat levels…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/judy-hair-braiding">Judy hair braiding</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned</div><div class="biz-snippet">Judy Hair Braiding specializes in professional African hair braiding services, including styles such as box braids, cornrows, twists, and other protective…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/julia-beauty-african-braiding">Julia beauty african braiding</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned</div><div class="biz-snippet">Julia Beauty African Braiding specializes in professional African hair braiding services, including styles such as box braids, cornrows, Senegalese twists,…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/julietta-market">Julietta Market</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned · Latine-Owned · Women-Owned · Veteran-Owned</div><div class="biz-snippet">Multivendor public market with grocery and specialty food vendors.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/k-hayes-limited">K. HAYES LIMITED</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned</div><div class="biz-snippet">Related Services: 237110 - Specializing in Aqueduct construction; Artesian well construction; Capping of water wells; Construction management, water and…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/karibu-international-market">Karibu International market</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">International grocery store specializing in foods and products from African and global cultures, offering a diverse selection of imported ingredients,…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/kentucky-blended-nutrition">Kentucky Blended Nutrition</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned</div><div class="biz-snippet">Health and wellness store offering nutrition products and blended supplements, serving customers in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/l-c-management-inc">L &amp; C MANAGEMENT, INC.</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned</div><div class="biz-snippet">Related Services: 236115 - Specializing in Condominium, single-family, construction general contractors, Construction management, single family building,…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/leanfeast">LeanFeast</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">LeanFeast is a food and beverage business likely offering health-conscious meal options, catering services, or meal prep solutions focused on nutritious,…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/lestar-mineral-development-inc">LESTAR MINERAL DEVELOPMENT, INC.</a><div class="biz-meta">Lexington · Manufacturing and Industrial · Black-Owned</div><div class="biz-snippet">Material Supplier/BROKER: 423510 – Metal Service Centers and Other Metal Merchant Wholesalers; 424720 - Specializing as a material supplier of oil,…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/little-black-dress-catering">Little Black Dress Catering</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Catering company based in Lexington, Kentucky, offering food and beverage services for events and occasions.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/mister-s-protective-services">MISTER S PROTECTIVE SERVICES</a><div class="biz-meta">Lexington · Other Professional Services · Black-Owned</div><div class="biz-snippet">Security and protective services</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/moody-mike-s">Moody Mike's</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned · Women-Owned</div><div class="biz-snippet">Moody Mike's is a food and beverage establishment likely offering prepared meals, snacks, or drinks for dine-in or takeout customers.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/mr-krabs-bean-s-bbq">Mr. Krabs &amp; Bean's BBQ</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Barbecue restaurant serving BBQ dishes in Lexington, KY. The menu likely features smoked meats and classic BBQ sides in a casual dining setting.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/never-too-much">Never Too Much</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Ice cream shop and creamery with unlimited toppings</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/our-magic-years-childcare-center">Our Magic Years Childcare Center</a><div class="biz-meta">Lexington · Education and Training · Black-Owned</div><div class="biz-snippet">Childcare center and early childhood education facility offering tutoring and teaching services for young children in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/rj-jewelers">Rj Jewelers</a><div class="biz-meta">Lexington · Retail and E-Commerce · Black-Owned · Latine-Owned · Women-Owned · Veteran-Owned · LGBTQ+-Owned · Disability-Owned · Native American-Owned</div><div class="biz-snippet">Jewelry store offering a selection of fine jewelry, engagement rings, and accessories for purchase. Located in Lexington, KY, with retail shopping available…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/s-and-c-market-and-deli">S and C Market and Deli</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Grocery store and deli offering a selection of market goods and freshly prepared deli items in Lexington, Kentucky.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/s-and-d-construction-management-inc">S and D CONSTRUCTION MANAGEMENT, INC.</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned</div><div class="biz-snippet">Related Services: 236115 - Specializing in condominium, single family, construction management, single-family building; duplex (i.e., side-by-side)…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/sassy-bleu">Sassy Bleu</a><div class="biz-meta">Lexington · Retail and E-Commerce · Black-Owned · Women-Owned</div><div class="biz-snippet">Sassy Bleu is a retail boutique likely offering women's clothing, accessories, and fashion items with a stylish and trendy aesthetic.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/sealinglife-technology">SealingLife Technology</a><div class="biz-meta">Lexington · Manufacturing and Industrial · Black-Owned · Women-Owned</div><div class="biz-snippet">Manufacturing rubber products, O-rings, aerospace and medical industrial supplies</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/sli-contracting">SLI CONTRACTING</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned · Women-Owned</div><div class="biz-snippet">Related Services: 238390 – Specializing in Caulking (i.e., waterproofing) contractors; 484110 – General freight trucking, local; and Trucking, general…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/smart-braids">Smart Braids</a><div class="biz-meta">Lexington · Arts and Entertainment · Black-Owned · Women-Owned</div><div class="biz-snippet">Smart Braids is a hair braiding salon that specializes in a variety of professional braiding styles, including box braids, cornrows, twists, and other…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/soulfeast-week">SoulFeast Week</a><div class="biz-meta">Lexington · Arts and Entertainment · Black-Owned</div><div class="biz-snippet">Week-long celebration of culture, cuisine, and community</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/tas-development-llc">TAS DEVELOPMENT, LLC</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned</div><div class="biz-snippet">Related Services: 236210 – Specializing in Addition, alteration and renovation, for-sale builders, industrial building (except warehouses), general…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/the-black-phoenix-co">The Black Phoenix Co</a><div class="biz-meta">Lexington · Arts and Entertainment · Black-Owned · Women-Owned</div><div class="biz-snippet">The Black Phoenix Co is an arts and entertainment business that likely offers creative services, artistic productions, or cultural experiences, potentially…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/the-melroy">The Melroy</a><div class="biz-meta">Lexington · Travel and Hospitality · Black-Owned · Women-Owned</div><div class="biz-snippet">Private members club in downtown Lexington: a 6,000 square foot city club for dining, coworking, events and socializing, for the community’s business,…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/the-perfect-spot">The Perfect Spot</a><div class="biz-meta">Lexington · Real Estate and Property Management · Black-Owned</div><div class="biz-snippet">The Perfect Spot likely offers real estate services such as helping clients find and secure ideal residential or commercial properties, and may also provide…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/the-wandering-speakeasy">The Wandering Speakeasy</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned · LGBTQ+-Owned</div><div class="biz-snippet">Roaming bar with signature cocktails</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/the-wedding-nanny-co">The Wedding Nanny Co.</a><div class="biz-meta">Lexington · Travel and Hospitality · Women-Owned · Black-Owned</div><div class="biz-snippet">On-site supervised childcare for weddings and events</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/thea-s-bass-and-biddy-kitchen-l-l-c">Thea's Bass and Biddy Kitchen L.L.C.</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned · Women-Owned · LGBTQ+-Owned</div><div class="biz-snippet">Thea's Bass and Biddy Kitchen L.L.C. is a food and beverage establishment likely specializing in Southern-style cooking, with menu offerings centered around…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/thick-madame-s-beauty-bar-llc">THICK MADAME'S BEAUTY BAR LLC</a><div class="biz-meta">Lexington · Health and Wellness · Black-Owned · Women-Owned</div><div class="biz-snippet">Thick Madame's Beauty Bar LLC is a beauty and wellness salon likely offering personal care services such as hair styling, skincare treatments, and beauty…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/tthawkins-transportation-llc">TTHawkins Transportation LLC</a><div class="biz-meta">Lexington · Construction and Remodeling · Black-Owned</div><div class="biz-snippet">General Freight Trucking, Local; General Freight Trucking, Long-Distance, Truckload; General Freight Trucking, Long-Distance, Less Than Truckload;…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/vip-childcare">VIP Childcare</a><div class="biz-meta">Lexington · Education and Training · Black-Owned</div><div class="biz-snippet">VIP Childcare is a child day care center in Lexington, Kentucky, providing supervised care and early learning support for young children.</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/warner-transportation-llc">WARNER TRANSPORTATION, LLC</a><div class="biz-meta">Lexington · Logistics and Transportation · Black-Owned</div><div class="biz-snippet">Related Services: 484110 - Specializing in Bulk mail truck transportation and General freight trucking; and 484121 - Specializing in Bulk mail truck…</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/winners-circle-liquors">Winners Circle Liquors</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div><div class="biz-snippet">Liquor store and spirits market offering a selection of spirits, wine, and beer.</div></li></ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Related</div>
+    <ul class="link-list"><li><a href="https://thepeoplesledger.net/directory/lexington">Lexington<span class="count">277</span></a></li><li><a href="https://thepeoplesledger.net/directory/black-owned">Black-Owned<span class="count">525</span></a></li></ul>
+  </div>
+</div>
+
+<footer class="footer">
+  &copy; 2025 The People's Ledger &nbsp;|&nbsp; Operated by Education to Action LLC &nbsp;|&nbsp;
+  <a href="https://thepeoplesledger.net/directory/">Browse the Directory</a> &nbsp;|&nbsp;
+  <a href="https://thepeoplesledger.net/about">About</a>
+  <br /><br />
+  Money Talks. Spend Where It Counts.
+</footer>
+
+</body>
+</html>

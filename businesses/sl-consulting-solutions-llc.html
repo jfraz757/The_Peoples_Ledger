@@ -10,13 +10,13 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SL Consulting Solutions, LLC | The People's Ledger — Kentucky Underrepresented Business Directory</title>
+  <title>SL Consulting Solutions, LLC – Women-Owned Business Consulting Business in Louisville, KY | The People's Ledger</title>
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <meta name="description" content="SL Consulting Solutions, LLC is a Women-Owned business in Business Consulting located in Kentucky. Find contact info, services, and certification details on The People's Ledger." />
+  <meta name="description" content="SL Consulting Solutions, LLC is a Women-Owned business in Business Consulting located in Louisville, Kentucky. Find contact info, services, and certification details on The People's Ledger." />
   <meta property="og:title" content="SL Consulting Solutions, LLC | The People's Ledger" />
-  <meta property="og:description" content="SL Consulting Solutions, LLC is a Women-Owned business in Business Consulting located in Kentucky. Find contact info, services, and certification details on The People's Ledger." />
+  <meta property="og:description" content="SL Consulting Solutions, LLC is a Women-Owned business in Business Consulting located in Louisville, Kentucky. Find contact info, services, and certification details on The People's Ledger." />
   <meta property="og:url" content="https://thepeoplesledger.net/businesses/sl-consulting-solutions-llc" />
   <meta property="og:type" content="website" />
   <link rel="canonical" href="https://thepeoplesledger.net/businesses/sl-consulting-solutions-llc" />
@@ -262,19 +262,49 @@
       .header-card { flex-direction: column; }
       .detail-label { min-width: 90px; }
       .nav-brand { font-size: 12px; }
+      .nav { gap: 0.6rem; padding: 0 1rem; }
+      .nav a.nav-home { display: none; }  /* the brand already links home */
     }
+
+    /* Breadcrumbs, summaries and link lists (business + directory pages) */
+    .crumbs { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 1rem; }
+    .crumbs a { color: rgba(255,215,0,0.8); text-decoration: none; }
+    .crumbs a:hover { text-decoration: underline; }
+    .about-text { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.78); }
+    .page-intro { font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.7); margin-top: 0.5rem; }
+    .link-list { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; }
+    .link-list a {
+      display: inline-block; font-size: 12px; padding: 5px 12px; border-radius: 20px;
+      color: #FFD700; text-decoration: none; border: 1px solid rgba(255,215,0,0.35);
+    }
+    .link-list a:hover { background: #FFD700; color: #111; }
+    .link-list .count { color: rgba(255,255,255,0.45); margin-left: 6px; }
+    .link-list a:hover .count { color: #333; }
+    .biz-list { list-style: none; }
+    .biz-list li { padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .biz-list li:last-child { border-bottom: none; }
+    .biz-list a.biz-name { color: #FFD700; font-weight: 600; text-decoration: none; font-size: 14px; }
+    .biz-list a.biz-name:hover { text-decoration: underline; }
+    .biz-meta { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+    .biz-snippet { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; line-height: 1.5; }
+    .dir-h1 { font-family: 'Michroma', sans-serif; color: #FFD700; font-size: 1.3rem; line-height: 1.4; letter-spacing: 0.03em; }
   </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"SL Consulting Solutions, LLC","url":"https://thepeoplesledger.net/businesses/sl-consulting-solutions-llc","sameAs":["https://www.slsolutions4u.com"],"telephone":"502-235-6459","address":"5012 Flora Springs Circle, Louisville, KY, 40299","description":"Project management, operations, facilities, strategic planning and facilitation, technology, budgeting, finance accounting, process improvement, leadership training, auditing, business analysis, human resources, recruiting, management, funding sources and cash flow analysis including expediting cash","knowsAbout":["Business Consulting"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Directory","item":"https://thepeoplesledger.net/directory/"},{"@type":"ListItem","position":2,"name":"Louisville","item":"https://thepeoplesledger.net/directory/louisville"},{"@type":"ListItem","position":3,"name":"SL Consulting Solutions, LLC","item":"https://thepeoplesledger.net/businesses/sl-consulting-solutions-llc"}]}</script>
 </head>
 <body>
 
 <nav class="nav">
   <a class="nav-brand" href="https://thepeoplesledger.net/">The People's Ledger</a>
   <div class="nav-spacer"></div>
-  <a class="nav-link" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link nav-home" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link" href="https://thepeoplesledger.net/directory/">Browse</a>
   <a class="nav-link" href="https://thepeoplesledger.net/about">About</a>
 </nav>
 
 <div class="container">
+
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="https://thepeoplesledger.net/directory/">Directory</a> › <a href="https://thepeoplesledger.net/directory/louisville">Louisville</a> › SL Consulting Solutions, LLC</nav>
 
   <!-- Header -->
   <div class="header-card">
@@ -334,11 +364,31 @@
     </div>
   </div>
 
+  <!-- About -->
+  <div class="section">
+    <div class="section-title">About</div>
+    <p class="about-text">SL Consulting Solutions, LLC is a women-owned business in the Business Consulting industry, based in Louisville, Kentucky. It holds MBE, MWBE, WBE certification. It is listed in The People's Ledger, a directory of Black-owned, women-owned, veteran-owned, and other underrepresented businesses in Kentucky.</p>
+  </div>
+
   <!-- Services -->
   
   <div class="section">
     <div class="section-title">Services &amp; Products</div>
     <div class="services-text">Project management, operations, facilities, strategic planning and facilitation, technology, budgeting, finance accounting, process improvement, leadership training, auditing, business analysis, human resources, recruiting, management, funding sources and cash flow analysis including expediting cash</div>
+  </div>
+
+  
+  <!-- Similar businesses -->
+  <div class="section">
+    <div class="section-title">Similar Businesses</div>
+    <ul class="biz-list"><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/agape-administrative-services">Agape Administrative Services</a><div class="biz-meta">Louisville · Business Consulting · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/aligne-consulting-llc">Aligne Consulting, LLC</a><div class="biz-meta">Louisville · Business Consulting · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/ascension-strategies-llc">ASCENSION STRATEGIES, LLC</a><div class="biz-meta">Louisville · Business Consulting · Black-Owned · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/bailey-safety-inc">Bailey Safety Inc.</a><div class="biz-meta">Louisville · Business Consulting · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/c-dobbs-llc">C. Dobbs, LLC</a><div class="biz-meta">Louisville · Business Consulting · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/cmlc-consulting-llc">CMLC Consulting, LLC</a><div class="biz-meta">Louisville · Business Consulting · Women-Owned</div></li></ul>
+  </div>
+
+  
+  <!-- Explore -->
+  <div class="section">
+    <div class="section-title">Explore the Directory</div>
+    <ul class="link-list"><li><a href="https://thepeoplesledger.net/directory/women-owned-louisville">Women-Owned in Louisville<span class="count">310</span></a></li><li><a href="https://thepeoplesledger.net/directory/business-consulting-louisville">Business Consulting in Louisville<span class="count">47</span></a></li><li><a href="https://thepeoplesledger.net/directory/louisville">Louisville<span class="count">600</span></a></li><li><a href="https://thepeoplesledger.net/directory/women-owned">Women-Owned<span class="count">1407</span></a></li><li><a href="https://thepeoplesledger.net/directory/business-consulting">Business Consulting<span class="count">98</span></a></li><li><a href="https://thepeoplesledger.net/directory/women-owned-business-consulting">Women-Owned Business Consulting<span class="count">72</span></a></li></ul>
   </div>
 
   <!-- CTA -->
@@ -352,6 +402,7 @@
 
 <footer class="footer">
   &copy; 2025 The People's Ledger &nbsp;|&nbsp; Operated by Education to Action LLC &nbsp;|&nbsp;
+  <a href="https://thepeoplesledger.net/directory/">Browse the Directory</a> &nbsp;|&nbsp;
   <a href="https://thepeoplesledger.net/about">About</a>
   <br /><br />
   Money Talks. Spend Where It Counts.

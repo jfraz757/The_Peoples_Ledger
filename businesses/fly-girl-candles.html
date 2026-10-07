@@ -10,7 +10,7 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fly Girl Candles | The People's Ledger — Kentucky Underrepresented Business Directory</title>
+  <title>Fly Girl Candles – Black-Owned Retail and E-Commerce Business in Kentucky | The People's Ledger</title>
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -262,19 +262,49 @@
       .header-card { flex-direction: column; }
       .detail-label { min-width: 90px; }
       .nav-brand { font-size: 12px; }
+      .nav { gap: 0.6rem; padding: 0 1rem; }
+      .nav a.nav-home { display: none; }  /* the brand already links home */
     }
+
+    /* Breadcrumbs, summaries and link lists (business + directory pages) */
+    .crumbs { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 1rem; }
+    .crumbs a { color: rgba(255,215,0,0.8); text-decoration: none; }
+    .crumbs a:hover { text-decoration: underline; }
+    .about-text { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.78); }
+    .page-intro { font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.7); margin-top: 0.5rem; }
+    .link-list { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; }
+    .link-list a {
+      display: inline-block; font-size: 12px; padding: 5px 12px; border-radius: 20px;
+      color: #FFD700; text-decoration: none; border: 1px solid rgba(255,215,0,0.35);
+    }
+    .link-list a:hover { background: #FFD700; color: #111; }
+    .link-list .count { color: rgba(255,255,255,0.45); margin-left: 6px; }
+    .link-list a:hover .count { color: #333; }
+    .biz-list { list-style: none; }
+    .biz-list li { padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .biz-list li:last-child { border-bottom: none; }
+    .biz-list a.biz-name { color: #FFD700; font-weight: 600; text-decoration: none; font-size: 14px; }
+    .biz-list a.biz-name:hover { text-decoration: underline; }
+    .biz-meta { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+    .biz-snippet { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; line-height: 1.5; }
+    .dir-h1 { font-family: 'Michroma', sans-serif; color: #FFD700; font-size: 1.3rem; line-height: 1.4; letter-spacing: 0.03em; }
   </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Fly Girl Candles","url":"https://thepeoplesledger.net/businesses/fly-girl-candles","sameAs":["https://www.flygirlcandles.com/"],"description":"Hand-poured soy candles and wax melts","knowsAbout":["Retail and E-Commerce"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Directory","item":"https://thepeoplesledger.net/directory/"},{"@type":"ListItem","position":2,"name":"Retail and E-Commerce","item":"https://thepeoplesledger.net/directory/retail-and-e-commerce"},{"@type":"ListItem","position":3,"name":"Fly Girl Candles","item":"https://thepeoplesledger.net/businesses/fly-girl-candles"}]}</script>
 </head>
 <body>
 
 <nav class="nav">
   <a class="nav-brand" href="https://thepeoplesledger.net/">The People's Ledger</a>
   <div class="nav-spacer"></div>
-  <a class="nav-link" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link nav-home" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link" href="https://thepeoplesledger.net/directory/">Browse</a>
   <a class="nav-link" href="https://thepeoplesledger.net/about">About</a>
 </nav>
 
 <div class="container">
+
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="https://thepeoplesledger.net/directory/">Directory</a> › <a href="https://thepeoplesledger.net/directory/retail-and-e-commerce">Retail and E-Commerce</a> › Fly Girl Candles</nav>
 
   <!-- Header -->
   <div class="header-card">
@@ -316,11 +346,31 @@
     
   </div>
 
+  <!-- About -->
+  <div class="section">
+    <div class="section-title">About</div>
+    <p class="about-text">Fly Girl Candles is a Black-owned business in the Retail and E-Commerce industry. It is listed in The People's Ledger, a directory of Black-owned, women-owned, veteran-owned, and other underrepresented businesses in Kentucky.</p>
+  </div>
+
   <!-- Services -->
   
   <div class="section">
     <div class="section-title">Services &amp; Products</div>
     <div class="services-text">Hand-poured soy candles and wax melts</div>
+  </div>
+
+  
+  <!-- Similar businesses -->
+  <div class="section">
+    <div class="section-title">Similar Businesses</div>
+    <ul class="biz-list"><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/1oak">1OAK</a><div class="biz-meta">Louisville · Retail and E-Commerce · Black-Owned · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/4-hounds-gear-grooming">4 Hounds Gear &amp; Grooming</a><div class="biz-meta">Covington · Retail and E-Commerce · LGBTQ+-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/502-broadwayfinds-llc">502 BroadwayFinds LLC</a><div class="biz-meta">Georgetown · Retail and E-Commerce · Black-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/a-a-boutique">A &amp; A Boutique</a><div class="biz-meta">Paducah · Retail and E-Commerce · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/a-touch-of-jolie">A Touch Of Jolie</a><div class="biz-meta">Louisville · Retail and E-Commerce · Black-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/a-z-office-resource">A-Z Office Resource</a><div class="biz-meta">Hopkinsville · Retail and E-Commerce · Women-Owned</div></li></ul>
+  </div>
+
+  
+  <!-- Explore -->
+  <div class="section">
+    <div class="section-title">Explore the Directory</div>
+    <ul class="link-list"><li><a href="https://thepeoplesledger.net/directory/black-owned">Black-Owned<span class="count">525</span></a></li><li><a href="https://thepeoplesledger.net/directory/retail-and-e-commerce">Retail and E-Commerce<span class="count">285</span></a></li><li><a href="https://thepeoplesledger.net/directory/black-owned-retail-and-e-commerce">Black-Owned Retail and E-Commerce<span class="count">53</span></a></li></ul>
   </div>
 
   <!-- CTA -->
@@ -334,6 +384,7 @@
 
 <footer class="footer">
   &copy; 2025 The People's Ledger &nbsp;|&nbsp; Operated by Education to Action LLC &nbsp;|&nbsp;
+  <a href="https://thepeoplesledger.net/directory/">Browse the Directory</a> &nbsp;|&nbsp;
   <a href="https://thepeoplesledger.net/about">About</a>
   <br /><br />
   Money Talks. Spend Where It Counts.

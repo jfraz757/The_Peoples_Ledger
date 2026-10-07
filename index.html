@@ -10,7 +10,19 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The People's Ledger</title>
+  <title>The People's Ledger – Kentucky Directory of Black-Owned, Women-Owned & Minority-Owned Businesses</title>
+  <meta name="description" content="Find and support Black-owned, women-owned, veteran-owned, Latine-owned, Asian-owned, LGBTQ+-owned and other underrepresented businesses across Kentucky. Search 2,000+ businesses by city, category, and ownership." />
+  <link rel="canonical" href="https://thepeoplesledger.net/" />
+  <meta property="og:title" content="The People's Ledger – Kentucky's Underrepresented Business Directory" />
+  <meta property="og:description" content="Find and support Black-owned, women-owned, veteran-owned and other underrepresented businesses across Kentucky." />
+  <meta property="og:url" content="https://thepeoplesledger.net/" />
+  <meta property="og:type" content="website" />
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[
+    {"@type":"WebSite","@id":"https://thepeoplesledger.net/#website","name":"The People's Ledger","url":"https://thepeoplesledger.net/","publisher":{"@id":"https://thepeoplesledger.net/#org"}},
+    {"@type":"Organization","@id":"https://thepeoplesledger.net/#org","name":"The People's Ledger","url":"https://thepeoplesledger.net/","logo":"https://thepeoplesledger.net/apple-touch-icon.png","parentOrganization":{"@type":"Organization","name":"Education to Action LLC","url":"https://educationtoaction.net"}}
+  ]}
+  </script>
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -1071,6 +1083,7 @@
 <header>
   <div class="site-title">THE PEOPLE'S LEDGER</div>
   <nav class="header-nav">
+    <a href="directory/" class="nav-link">BROWSE</a>
     <a href="about" class="nav-link">ABOUT</a>
     <button class="nav-link" onclick="openModal()">+ Submit a Business or Correction</button>
   </nav>
@@ -1085,6 +1098,7 @@
 <!-- ─── Mobile Nav Drawer ────────────────────────────────────── -->
 <div class="nav-overlay" id="nav-overlay" onclick="closeMobileNav()"></div>
 <nav class="mobile-nav-drawer" id="mobile-nav-drawer">
+  <a href="directory/" class="nav-link" onclick="closeMobileNav()">BROWSE</a>
   <a href="about" class="nav-link" onclick="closeMobileNav()">ABOUT</a>
   <button class="nav-link" onclick="closeMobileNav(); openModal();">+ Submit a Business or Correction</button>
 </nav>
@@ -1452,6 +1466,7 @@
 <footer>
   The People's Ledger &mdash; Built by <a href="https://educationtoaction.net" target="_blank">Education to Action LLC</a> &nbsp;|&nbsp;
   Data sourced from the open web &nbsp;|&nbsp;
+  <a href="directory/">Browse by City, Category &amp; Ownership</a> &nbsp;|&nbsp;
   <a href="https://github.com/jfraz757/The_Peoples_Ledger" target="_blank">Open Source on GitHub</a>
 </footer>
 

@@ -10,7 +10,7 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Revamp Social | The People's Ledger — Kentucky Underrepresented Business Directory</title>
+  <title>The Revamp Social – Black-Owned & Women-Owned Marketing and Communications Business in Kentucky | The People's Ledger</title>
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -262,19 +262,49 @@
       .header-card { flex-direction: column; }
       .detail-label { min-width: 90px; }
       .nav-brand { font-size: 12px; }
+      .nav { gap: 0.6rem; padding: 0 1rem; }
+      .nav a.nav-home { display: none; }  /* the brand already links home */
     }
+
+    /* Breadcrumbs, summaries and link lists (business + directory pages) */
+    .crumbs { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 1rem; }
+    .crumbs a { color: rgba(255,215,0,0.8); text-decoration: none; }
+    .crumbs a:hover { text-decoration: underline; }
+    .about-text { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.78); }
+    .page-intro { font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.7); margin-top: 0.5rem; }
+    .link-list { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; }
+    .link-list a {
+      display: inline-block; font-size: 12px; padding: 5px 12px; border-radius: 20px;
+      color: #FFD700; text-decoration: none; border: 1px solid rgba(255,215,0,0.35);
+    }
+    .link-list a:hover { background: #FFD700; color: #111; }
+    .link-list .count { color: rgba(255,255,255,0.45); margin-left: 6px; }
+    .link-list a:hover .count { color: #333; }
+    .biz-list { list-style: none; }
+    .biz-list li { padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .biz-list li:last-child { border-bottom: none; }
+    .biz-list a.biz-name { color: #FFD700; font-weight: 600; text-decoration: none; font-size: 14px; }
+    .biz-list a.biz-name:hover { text-decoration: underline; }
+    .biz-meta { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+    .biz-snippet { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; line-height: 1.5; }
+    .dir-h1 { font-family: 'Michroma', sans-serif; color: #FFD700; font-size: 1.3rem; line-height: 1.4; letter-spacing: 0.03em; }
   </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"The Revamp Social","url":"https://thepeoplesledger.net/businesses/the-revamp-social","sameAs":["https://www.therevampsocial.com/"],"telephone":"(502) 625-5753","description":"The Revamp Social is a marketing and communications firm based in Kentucky that likely offers social media management, branding, and digital marketing services to help businesses refresh and elevate their online presence.","knowsAbout":["Marketing and Communications"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Directory","item":"https://thepeoplesledger.net/directory/"},{"@type":"ListItem","position":2,"name":"Marketing and Communications","item":"https://thepeoplesledger.net/directory/marketing-and-communications"},{"@type":"ListItem","position":3,"name":"The Revamp Social","item":"https://thepeoplesledger.net/businesses/the-revamp-social"}]}</script>
 </head>
 <body>
 
 <nav class="nav">
   <a class="nav-brand" href="https://thepeoplesledger.net/">The People's Ledger</a>
   <div class="nav-spacer"></div>
-  <a class="nav-link" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link nav-home" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link" href="https://thepeoplesledger.net/directory/">Browse</a>
   <a class="nav-link" href="https://thepeoplesledger.net/about">About</a>
 </nav>
 
 <div class="container">
+
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="https://thepeoplesledger.net/directory/">Directory</a> › <a href="https://thepeoplesledger.net/directory/marketing-and-communications">Marketing and Communications</a> › The Revamp Social</nav>
 
   <!-- Header -->
   <div class="header-card">
@@ -320,11 +350,31 @@
     
   </div>
 
+  <!-- About -->
+  <div class="section">
+    <div class="section-title">About</div>
+    <p class="about-text">The Revamp Social is a Black-owned, women-owned, LGBTQ+-owned business in the Marketing and Communications industry. It is listed in The People's Ledger, a directory of Black-owned, women-owned, veteran-owned, and other underrepresented businesses in Kentucky.</p>
+  </div>
+
   <!-- Services -->
   
   <div class="section">
     <div class="section-title">Services &amp; Products</div>
     <div class="services-text">The Revamp Social is a marketing and communications firm based in Kentucky that likely offers social media management, branding, and digital marketing services to help businesses refresh and elevate their online presence.</div>
+  </div>
+
+  
+  <!-- Similar businesses -->
+  <div class="section">
+    <div class="section-title">Similar Businesses</div>
+    <ul class="biz-list"><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/ad-venture-promotions">Ad-venture Promotions</a><div class="biz-meta">Marketing and Communications · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/alison-associates">ALISON &amp; ASSOCIATES</a><div class="biz-meta">Owensboro · Marketing and Communications · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/atomic-cowgirl-inc-dba-signarama-downtown">Atomic Cowgirl, Inc. dba Signarama Downtown</a><div class="biz-meta">Louisville · Marketing and Communications · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/big-bloomin-design">Big Bloomin Design</a><div class="biz-meta">Bardstown · Marketing and Communications · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/bmo-creative-llc">BMO Creative, LLC</a><div class="biz-meta">Mount Washington · Marketing and Communications · Women-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/brand-advertising-group-llc">BRAND ADVERTISING GROUP, LLC</a><div class="biz-meta">Lexington · Marketing and Communications · Women-Owned</div></li></ul>
+  </div>
+
+  
+  <!-- Explore -->
+  <div class="section">
+    <div class="section-title">Explore the Directory</div>
+    <ul class="link-list"><li><a href="https://thepeoplesledger.net/directory/black-owned">Black-Owned<span class="count">525</span></a></li><li><a href="https://thepeoplesledger.net/directory/women-owned">Women-Owned<span class="count">1407</span></a></li><li><a href="https://thepeoplesledger.net/directory/lgbtq-owned">LGBTQ+-Owned<span class="count">94</span></a></li><li><a href="https://thepeoplesledger.net/directory/marketing-and-communications">Marketing and Communications<span class="count">55</span></a></li><li><a href="https://thepeoplesledger.net/directory/black-owned-marketing-and-communications">Black-Owned Marketing and Communications<span class="count">7</span></a></li><li><a href="https://thepeoplesledger.net/directory/women-owned-marketing-and-communications">Women-Owned Marketing and Communications<span class="count">45</span></a></li></ul>
   </div>
 
   <!-- CTA -->
@@ -338,6 +388,7 @@
 
 <footer class="footer">
   &copy; 2025 The People's Ledger &nbsp;|&nbsp; Operated by Education to Action LLC &nbsp;|&nbsp;
+  <a href="https://thepeoplesledger.net/directory/">Browse the Directory</a> &nbsp;|&nbsp;
   <a href="https://thepeoplesledger.net/about">About</a>
   <br /><br />
   Money Talks. Spend Where It Counts.

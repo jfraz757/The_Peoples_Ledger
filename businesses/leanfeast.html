@@ -10,13 +10,13 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LeanFeast | The People's Ledger — Kentucky Underrepresented Business Directory</title>
+  <title>LeanFeast – Black-Owned Food and Beverage Business in Lexington, KY | The People's Ledger</title>
   <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <meta name="description" content="LeanFeast is a Black-Owned business in Food and Beverage located in Kentucky. Find contact info, services, and certification details on The People's Ledger." />
+  <meta name="description" content="LeanFeast is a Black-Owned business in Food and Beverage located in Lexington, Kentucky. Find contact info, services, and certification details on The People's Ledger." />
   <meta property="og:title" content="LeanFeast | The People's Ledger" />
-  <meta property="og:description" content="LeanFeast is a Black-Owned business in Food and Beverage located in Kentucky. Find contact info, services, and certification details on The People's Ledger." />
+  <meta property="og:description" content="LeanFeast is a Black-Owned business in Food and Beverage located in Lexington, Kentucky. Find contact info, services, and certification details on The People's Ledger." />
   <meta property="og:url" content="https://thepeoplesledger.net/businesses/leanfeast" />
   <meta property="og:type" content="website" />
   <link rel="canonical" href="https://thepeoplesledger.net/businesses/leanfeast" />
@@ -262,19 +262,49 @@
       .header-card { flex-direction: column; }
       .detail-label { min-width: 90px; }
       .nav-brand { font-size: 12px; }
+      .nav { gap: 0.6rem; padding: 0 1rem; }
+      .nav a.nav-home { display: none; }  /* the brand already links home */
     }
+
+    /* Breadcrumbs, summaries and link lists (business + directory pages) */
+    .crumbs { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 1rem; }
+    .crumbs a { color: rgba(255,215,0,0.8); text-decoration: none; }
+    .crumbs a:hover { text-decoration: underline; }
+    .about-text { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.78); }
+    .page-intro { font-size: 15px; line-height: 1.7; color: rgba(255,255,255,0.7); margin-top: 0.5rem; }
+    .link-list { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; }
+    .link-list a {
+      display: inline-block; font-size: 12px; padding: 5px 12px; border-radius: 20px;
+      color: #FFD700; text-decoration: none; border: 1px solid rgba(255,215,0,0.35);
+    }
+    .link-list a:hover { background: #FFD700; color: #111; }
+    .link-list .count { color: rgba(255,255,255,0.45); margin-left: 6px; }
+    .link-list a:hover .count { color: #333; }
+    .biz-list { list-style: none; }
+    .biz-list li { padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .biz-list li:last-child { border-bottom: none; }
+    .biz-list a.biz-name { color: #FFD700; font-weight: 600; text-decoration: none; font-size: 14px; }
+    .biz-list a.biz-name:hover { text-decoration: underline; }
+    .biz-meta { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+    .biz-snippet { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; line-height: 1.5; }
+    .dir-h1 { font-family: 'Michroma', sans-serif; color: #FFD700; font-size: 1.3rem; line-height: 1.4; letter-spacing: 0.03em; }
   </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"LeanFeast","url":"https://thepeoplesledger.net/businesses/leanfeast","sameAs":["https://www.leanfeastlexington.com/"],"telephone":"(859) 687-1007","address":"220 Ruccio Way Ste 190, Lexington, KY 40503","description":"LeanFeast is a food and beverage business likely offering health-conscious meal options, catering services, or meal prep solutions focused on nutritious, lower-calorie dining choices.","knowsAbout":["Food and Beverage"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Directory","item":"https://thepeoplesledger.net/directory/"},{"@type":"ListItem","position":2,"name":"Lexington","item":"https://thepeoplesledger.net/directory/lexington"},{"@type":"ListItem","position":3,"name":"LeanFeast","item":"https://thepeoplesledger.net/businesses/leanfeast"}]}</script>
 </head>
 <body>
 
 <nav class="nav">
   <a class="nav-brand" href="https://thepeoplesledger.net/">The People's Ledger</a>
   <div class="nav-spacer"></div>
-  <a class="nav-link" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link nav-home" href="https://thepeoplesledger.net/">← Directory</a>
+  <a class="nav-link" href="https://thepeoplesledger.net/directory/">Browse</a>
   <a class="nav-link" href="https://thepeoplesledger.net/about">About</a>
 </nav>
 
 <div class="container">
+
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="https://thepeoplesledger.net/directory/">Directory</a> › <a href="https://thepeoplesledger.net/directory/lexington">Lexington</a> › LeanFeast</nav>
 
   <!-- Header -->
   <div class="header-card">
@@ -330,11 +360,31 @@
     </div>
   </div>
 
+  <!-- About -->
+  <div class="section">
+    <div class="section-title">About</div>
+    <p class="about-text">LeanFeast is a Black-owned business in the Food and Beverage industry, based in Lexington, Kentucky. It is listed in The People's Ledger, a directory of Black-owned, women-owned, veteran-owned, and other underrepresented businesses in Kentucky.</p>
+  </div>
+
   <!-- Services -->
   
   <div class="section">
     <div class="section-title">Services &amp; Products</div>
     <div class="services-text">LeanFeast is a food and beverage business likely offering health-conscious meal options, catering services, or meal prep solutions focused on nutritious, lower-calorie dining choices.</div>
+  </div>
+
+  
+  <!-- Similar businesses -->
+  <div class="section">
+    <div class="section-title">Similar Businesses</div>
+    <ul class="biz-list"><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/859-social-club-soul-food-restaurant">859 Social Club Soul Food Restaurant</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/alfalfa-restaurant">Alfalfa Restaurant</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/alfalfa-s">Alfalfa'S</a><div class="biz-meta">Lexington · Food and Beverage · Black-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/archa-nine-thai-kitchen-old-todds-road">Archa Nine Thai Kitchen | Old Todds Road</a><div class="biz-meta">Lexington · Food and Beverage · Women-Owned · Asian-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/archa-nine-thai-kitchen-south-elkhorn-village">Archa Nine Thai Kitchen | South Elkhorn Village</a><div class="biz-meta">Lexington · Food and Beverage · Women-Owned · Asian-Owned</div></li><li><a class="biz-name" href="https://thepeoplesledger.net/businesses/asian-wind">Asian Wind</a><div class="biz-meta">Lexington · Food and Beverage · Asian-Owned</div></li></ul>
+  </div>
+
+  
+  <!-- Explore -->
+  <div class="section">
+    <div class="section-title">Explore the Directory</div>
+    <ul class="link-list"><li><a href="https://thepeoplesledger.net/directory/black-owned-lexington">Black-Owned in Lexington<span class="count">83</span></a></li><li><a href="https://thepeoplesledger.net/directory/food-and-beverage-lexington">Food and Beverage in Lexington<span class="count">84</span></a></li><li><a href="https://thepeoplesledger.net/directory/lexington">Lexington<span class="count">277</span></a></li><li><a href="https://thepeoplesledger.net/directory/black-owned">Black-Owned<span class="count">525</span></a></li><li><a href="https://thepeoplesledger.net/directory/food-and-beverage">Food and Beverage<span class="count">462</span></a></li><li><a href="https://thepeoplesledger.net/directory/black-owned-food-and-beverage">Black-Owned Food and Beverage<span class="count">123</span></a></li></ul>
   </div>
 
   <!-- CTA -->
@@ -348,6 +398,7 @@
 
 <footer class="footer">
   &copy; 2025 The People's Ledger &nbsp;|&nbsp; Operated by Education to Action LLC &nbsp;|&nbsp;
+  <a href="https://thepeoplesledger.net/directory/">Browse the Directory</a> &nbsp;|&nbsp;
   <a href="https://thepeoplesledger.net/about">About</a>
   <br /><br />
   Money Talks. Spend Where It Counts.
