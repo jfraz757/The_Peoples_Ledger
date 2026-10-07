@@ -1071,7 +1071,7 @@
 <header>
   <div class="site-title">THE PEOPLE'S LEDGER</div>
   <nav class="header-nav">
-    <a href="about.html" class="nav-link">ABOUT</a>
+    <a href="about" class="nav-link">ABOUT</a>
     <button class="nav-link" onclick="openModal()">+ Submit a Business or Correction</button>
   </nav>
   <!-- Hamburger (mobile only) -->
@@ -1085,7 +1085,7 @@
 <!-- ─── Mobile Nav Drawer ────────────────────────────────────── -->
 <div class="nav-overlay" id="nav-overlay" onclick="closeMobileNav()"></div>
 <nav class="mobile-nav-drawer" id="mobile-nav-drawer">
-  <a href="about.html" class="nav-link" onclick="closeMobileNav()">ABOUT</a>
+  <a href="about" class="nav-link" onclick="closeMobileNav()">ABOUT</a>
   <button class="nav-link" onclick="closeMobileNav(); openModal();">+ Submit a Business or Correction</button>
 </nav>
 
@@ -1717,7 +1717,7 @@
     // Slugs are [a-z0-9-] by construction (slugify), so they are safe in an href as-is.
     const slug = SLUGS[raw.id];
     const nameHTML = slug
-      ? `<a class="card-name card-page-link" href="businesses/${slug}.html">${b.business_name || "Unknown Business"}</a>`
+      ? `<a class="card-name card-page-link" href="businesses/${slug}">${b.business_name || "Unknown Business"}</a>`
       : `<div class="card-name">${b.business_name || "Unknown Business"}</div>`;
 
     return `

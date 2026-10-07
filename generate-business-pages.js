@@ -230,7 +230,7 @@ function buildBusinessPage(biz) {
 
   // Directory back-link — links to index with business name pre-filled in search
   // (index.html reads ?search= on load).
-  const directoryLink = `${SITE_URL}/index.html?search=${encodeURIComponent(raw.business_name)}`;
+  const directoryLink = `${SITE_URL}/?search=${encodeURIComponent(raw.business_name)}`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -251,9 +251,9 @@ function buildBusinessPage(biz) {
   <meta name="description" content="${description}" />
   <meta property="og:title" content="${business_name} | The People's Ledger" />
   <meta property="og:description" content="${description}" />
-  <meta property="og:url" content="${SITE_URL}/businesses/${slug}.html" />
+  <meta property="og:url" content="${SITE_URL}/businesses/${slug}" />
   <meta property="og:type" content="website" />
-  <link rel="canonical" href="${SITE_URL}/businesses/${slug}.html" />
+  <link rel="canonical" href="${SITE_URL}/businesses/${slug}" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet" />
   <style>
@@ -502,10 +502,10 @@ function buildBusinessPage(biz) {
 <body>
 
 <nav class="nav">
-  <a class="nav-brand" href="${SITE_URL}/index.html">The People's Ledger</a>
+  <a class="nav-brand" href="${SITE_URL}/">The People's Ledger</a>
   <div class="nav-spacer"></div>
-  <a class="nav-link" href="${SITE_URL}/index.html">← Directory</a>
-  <a class="nav-link" href="${SITE_URL}/about.html">About</a>
+  <a class="nav-link" href="${SITE_URL}/">← Directory</a>
+  <a class="nav-link" href="${SITE_URL}/about">About</a>
 </nav>
 
 <div class="container">
@@ -584,14 +584,14 @@ function buildBusinessPage(biz) {
   <div class="cta">
     <p>Find more underrepresented businesses like this one in the directory.</p>
     <a class="btn btn-primary" href="${directoryLink}">View in Directory</a>
-    <a class="btn" href="${SITE_URL}/index.html">Browse All Businesses</a>
+    <a class="btn" href="${SITE_URL}/">Browse All Businesses</a>
   </div>
 
 </div>
 
 <footer class="footer">
   &copy; 2025 The People's Ledger &nbsp;|&nbsp; Operated by Education to Action LLC &nbsp;|&nbsp;
-  <a href="${SITE_URL}/about.html">About</a>
+  <a href="${SITE_URL}/about">About</a>
   <br /><br />
   Money Talks. Spend Where It Counts.
 </footer>
@@ -614,7 +614,7 @@ function lastModified(file) {
 function buildSitemap(businesses) {
   const urls = businesses.map(b => `
   <url>
-    <loc>${SITE_URL}/businesses/${b._slug}.html</loc>
+    <loc>${SITE_URL}/businesses/${b._slug}</loc>
     <lastmod>${lastModified(path.join(OUT_DIR, `${b._slug}.html`))}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -623,13 +623,13 @@ function buildSitemap(businesses) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${SITE_URL}/index.html</loc>
+    <loc>${SITE_URL}/</loc>
     <lastmod>${lastModified(path.join(__dirname, "index.html"))}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>${SITE_URL}/about.html</loc>
+    <loc>${SITE_URL}/about</loc>
     <lastmod>${lastModified(path.join(__dirname, "about.html"))}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
