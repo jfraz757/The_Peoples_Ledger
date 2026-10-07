@@ -702,6 +702,20 @@ async function main() {
     console.log("  sitemap.xml written to /businesses/");
   }
 
+  // id -> slug for every page written, so the directory cards in index.html can link to
+  // the business's page. The slug cannot be recomputed in the browser: a name shared by
+  // two businesses gets a city suffix, and only this script sees every name at once.
+  const slugMap = {};
+  for (const b of [...businesses].sort((a, c) => a.id - c.id)) if (b._slug) slugMap[b.id] = b._slug;
+  const slugsJson = JSON.stringify(slugMap) + "\n";
+  const slugsPath = path.join(OUT_DIR, "slugs.json");
+  let oldSlugs = null;
+  try { oldSlugs = fs.readFileSync(slugsPath, "utf8").replace(/\r\n/g, "\n"); } catch { /* first run */ }
+  if (oldSlugs !== slugsJson) {
+    fs.writeFileSync(slugsPath, slugsJson, "utf8");
+    console.log(`  slugs.json written (${Object.keys(slugMap).length} card links).`);
+  }
+
   console.log("\nDone. Next steps:");
   console.log("  git add businesses/");
   console.log('  git commit -m "Generate business SEO pages"');

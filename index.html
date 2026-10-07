@@ -308,6 +308,17 @@
       border-left-color: #FFD700;
     }
 
+    /* Clickable card: the business name is the real link to its page, and its ::after
+       stretches over the whole card so a click anywhere opens the page. The website link
+       sits above the overlay and keeps opening the business's own site. */
+    .card-clickable { position: relative; cursor: pointer; }
+    .card-page-link { text-decoration: none; display: block; }
+    .card-page-link::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+    .card-clickable:hover .card-page-link { text-decoration: underline; text-underline-offset: 3px; }
+    .card-page-link:focus-visible { outline: 2px solid #FFD700; outline-offset: 3px; }
+    .card-clickable .card-link,
+    .card-clickable .cert-badge { position: relative; z-index: 2; }
+
     .card-header-row {
       display: flex;
       align-items: center;
@@ -1582,7 +1593,7 @@
     box.classList.remove("visible");
 
     try {
-      const records = await fetchRecords();
+      const [records] = await Promise.all([fetchRecords(), slugsLoaded]);
 
       // The hero shows the size of the WHOLE directory, so it only updates from an
       // unfiltered result. (It used to show whatever the current filter returned.)
@@ -1625,6 +1636,17 @@
     const full = /^https?:\/\//i.test(u) ? u : "https://" + u;
     try { return new URL(full).protocol.startsWith("http") ? full : null; } catch (e) { return null; }
   }
+
+  // Each card opens the business's own page (businesses/<slug>.html). The slugs come from
+  // generate-business-pages.js, which writes businesses/slugs.json alongside the pages:
+  // names shared by two businesses get a city suffix there, so the browser cannot rebuild
+  // them. Loaded once, in parallel with the first search. A business approved since the
+  // pages were last generated has no page yet, so its card simply is not a link.
+  let SLUGS = {};
+  const slugsLoaded = fetch("businesses/slugs.json")
+    .then(r => r.ok ? r.json() : {})
+    .then(m => { SLUGS = m || {}; })
+    .catch(() => {});
 
   function cardHTML(raw) {
     // Every text field is escaped before it touches innerHTML. Names, addresses and
@@ -1689,11 +1711,17 @@
       .join("");
     const certRow = (certBadges || selfBadges) ? `<div class="card-certs">${certBadges}${selfBadges}</div>` : "";
 
+    // Slugs are [a-z0-9-] by construction (slugify), so they are safe in an href as-is.
+    const slug = SLUGS[raw.id];
+    const nameHTML = slug
+      ? `<a class="card-name card-page-link" href="businesses/${slug}.html">${b.business_name || "Unknown Business"}</a>`
+      : `<div class="card-name">${b.business_name || "Unknown Business"}</div>`;
+
     return `
-      <div class="card">
+      <div class="card${slug ? " card-clickable" : ""}">
         <div class="card-header-row">
           ${favicon}
-          <div class="card-name">${b.business_name || "Unknown Business"}</div>
+          ${nameHTML}
         </div>
         ${typeLabel}
         ${certRow}
