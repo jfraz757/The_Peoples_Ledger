@@ -660,7 +660,7 @@ def fetch_known_businesses() -> tuple[set, set, set, int]:
     loose_names, loose_sites = set(), set()
     total = 0
     try:
-        rows = common.fetch_all("business_name,website", key=SUPABASE_KEY)
+        rows = common.fetch_all("business_name,website")   # service key if set: sees hidden rows too
     except Exception as e:
         print(f"  [Supabase read error] {e}")
         rows = []

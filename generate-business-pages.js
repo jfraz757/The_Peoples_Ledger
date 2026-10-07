@@ -651,8 +651,10 @@ async function main() {
   console.log(`  ${written} business page(s) written, ${unchanged} unchanged.`);
   if (skipped) console.log(`  ${skipped} records skipped (no business name).`);
 
-  // Remove pages for businesses that are no longer in the database (purged, merged by
-  // dedupe_live, deleted in admin). This script used to only ever add files, so a deleted
+  // Remove pages for businesses that are no longer listed publicly (purged, merged by
+  // dedupe_live, deleted in admin, or hidden for lacking ownership evidence -- the
+  // publishable key cannot read those, see hide_unevidenced_listings.sql; a hidden
+  // listing's page comes back by itself once it is tagged). This script used to only ever add files, so a deleted
   // business kept a live, indexed page -- and stayed in search results -- indefinitely.
   // Removed pages are git-tracked, so `git checkout` brings one back if needed.
   // Guard: if the fetch came back much smaller than the folder, something is wrong with
@@ -665,7 +667,7 @@ async function main() {
                 `were fetched for ${onDisk.length} pages -- NOT removing anything. Check the fetch.`);
   } else if (orphans.length) {
     for (const f of orphans) fs.unlinkSync(path.join(OUT_DIR, f));
-    console.log(`  ${orphans.length} page(s) removed for businesses no longer in the database.`);
+    console.log(`  ${orphans.length} page(s) removed for businesses no longer listed (deleted or hidden).`);
   }
 
   const sitemap = buildSitemap(businesses.filter(b => b.business_name && b.business_name.trim()));

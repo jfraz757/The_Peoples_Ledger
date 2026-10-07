@@ -92,9 +92,13 @@ def require_service_credentials(purpose="writes to the database"):
 # --- reads ------------------------------------------------------------------
 def fetch_all(select, key=None, table="businesses", order="id.asc", timeout=60):
     """Every row of `table`, paging past PostgREST's 1,000-row cap. Raises on an
-    HTTP error rather than returning a silently truncated list."""
+    HTTP error rather than returning a silently truncated list.
+
+    Reads with the service key when .env has one. The publishable key cannot see
+    listings hidden for lacking ownership evidence (hide_unevidenced_listings.sql), so
+    a duplicate check made with it would miss them and let a scrape re-add them."""
     import requests
-    key = key or publishable_key()
+    key = key or service_key() or publishable_key()
     url = supabase_url()
     if not url or not key:
         raise RuntimeError("SUPABASE_URL and a Supabase key must be set in .env")

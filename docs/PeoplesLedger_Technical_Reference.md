@@ -582,6 +582,8 @@ End state — correct at both gates independently, so neither is load-bearing al
 | GRANT | `SELECT` only | `INSERT` only |
 | POLICY | "Allow public select" (`r`) | "Allow public insert on submissions" (`a`) |
 
+**Since 2026-10-07 the `businesses` SELECT policy is "Public select: listings with ownership evidence"** (`hide_unevidenced_listings.sql`): it returns only rows with a non-blank `minority_type`, `certification_type` or `self_reported_certification`. Rows without evidence stay in the table but are invisible to anon — search, count, export, autocomplete, the About page count and `generate-business-pages.js` all read as anon. The pipeline reads with the service key (`common.fetch_all` prefers it) so its duplicate checks still see hidden rows.
+
 That pairing is the point: with no permissive policy left, accidentally re-granting a privilege cannot reopen anything on its own — and vice versa. Post-fix live checks: directory `SELECT` 200, `search_businesses` returns `total_count=1443`, `suggest_search` returns results, `submissions` INSERT permission intact.
 
 Note `relforcerowsecurity = false` on both tables. That is expected and harmless — it only governs whether RLS applies to the table *owner* (`postgres`), and the service role bypasses RLS regardless.
@@ -849,6 +851,18 @@ Two related idempotency fixes:
 ---
 
 ## 20. Change Log
+
+### October 2026 (7th) — Listings without ownership evidence hidden; veteran listings confirmed
+
+**Hidden, not deleted.** The public read policy on `businesses` now returns only rows with a non-blank `minority_type`, `certification_type` or `self_reported_certification` (`hide_unevidenced_listings.sql`, applied 2026-10-07; the old `using (true)` policy "Allow public select" was replaced, and the rollback is in the file). **129 listings hidden; the public directory shows 2,248 of 2,377 rows.** One policy covers every public read — `search_businesses` and `suggest_search` are SECURITY INVOKER, and index.html, about.html and `generate-business-pages.js` all use the publishable key — so the generator removed the 129 pages as orphans. A hidden listing reappears, page included, the moment any evidence field is filled; no other step is needed.
+
+**The pipeline must read with the service key.** `common.fetch_all` now defaults to the service key (publishable only as a fallback), and `scrape.py`'s known-business download uses that default. With the publishable key the intake gate and `prepare.py`'s skip-known check would not see hidden rows, and a scrape would re-add them as new listings.
+
+**Veteran listings.** The 19 untagged listings found on veteranownedbusiness.com were checked against their own listing there (one page every 30 s; no block, unlike the fast run on the 6th): all 19 are verified members, names and cities matched. **17 tagged** — 10 "Veteran Owned Business" → Veteran-Owned, 7 "Service Disabled Veteran Owned" → Veteran-Owned, Disability-Owned. Sugar Plums and Uplifting Aerial Videography are "Spouse of Veteran or Active Military" and stay untagged (hidden). Evidence in `data/vob_retry_results.csv`, old values in `data/vob_retry_backup_*.csv`.
+
+**Removed:** 15 listings that are not minority-owned businesses — national chains and brokerages (Acrisure, AssuredPartners, Marsh McLennan, McGriff, Edward Jones, Sonny's BBQ, Total Wine & More, Arthur Murray, Snelling, Hofbräuhaus, The Eagle), a county veterans office, Kentucky SCORE, the Muhammad Ali Center and the Louisville Independent Business Alliance — via the new `pipeline/remove_listings.py` (full-row backup, denylist, then delete). **Operator-confirmed:** 3 5 7 Security Solutions → Black-Owned, website added.
+
+**Still open:** 14 listings have no ownership tag and only "SBE" from a state list. SBE (Small Business Enterprise) is a size certification, not an ownership one, so the policy shows them although nothing says who owns them.
 
 ### October 2026 (6th) — Self-reported certifications get their own field
 

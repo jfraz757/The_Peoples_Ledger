@@ -93,7 +93,8 @@ def fetch_live_names():
     counties, genuinely different organizations. No threshold separates them, so
     a human has to look.
     """
-    # Read-only: the publishable key is enough, and this script never writes to Supabase.
+    # Read-only. fetch_all prefers the service key so hidden (unevidenced) listings are
+    # compared too; the publishable key still works but cannot see those.
     if not (common.supabase_url() and common.publishable_key()):
         return None
     try:
