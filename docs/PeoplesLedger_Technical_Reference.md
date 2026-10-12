@@ -631,7 +631,7 @@ node generate-business-pages.js
 **What the script does:**
 1. Queries Supabase for all businesses (paginated — handles 1,000+ records correctly)
 2. Writes a static HTML file to `/businesses/{slug}.html` for each business
-3. Writes `/businesses/sitemap.xml` listing every business page plus `index.html` and `about.html`
+3. Writes `/sitemap.xml` (site root) listing every business page plus `index.html` and `about.html`
 
 **Slugify logic:** business names are lowercased, non-alphanumeric characters replaced with hyphens, leading/trailing hyphens stripped. Example: "Joe's Plumbing LLC" → `joes-plumbing-llc`.
 
@@ -644,9 +644,9 @@ node generate-business-pages.js
 - CTA linking back to `index.html?search=BusinessName` and to the full directory
 - Canonical URL and Open Graph meta tags for SEO
 
-**Sitemap:** `/businesses/sitemap.xml` lists every business page plus `index.html` and `about.html`. First submitted to Google Search Console June 24, 2026 (1,266 pages discovered, Status: Success). Regenerated June 2026 after dedupe and enrichment. **Current count: 2,315** pages, matching the live table exactly (verified 2026-07-31). The 1,794 figure here was stale by a month -- the out-of-state purge had dropped it.
+**Sitemap:** `/sitemap.xml` (moved from `/businesses/sitemap.xml` 2026-10-12 -- a sitemap only covers its own folder, so the old location could not list `/directory/` or the root pages) lists every business page plus `index.html` and `about.html`. First submitted to Google Search Console June 24, 2026 (1,266 pages discovered, Status: Success). Regenerated June 2026 after dedupe and enrichment. **Current count: 2,315** pages, matching the live table exactly (verified 2026-07-31). The 1,794 figure here was stale by a month -- the out-of-state purge had dropped it.
 Submit sitemap at: `https://search.google.com/search-console`
-Sitemap URL: `https://thepeoplesledger.net/businesses/sitemap.xml`
+Sitemap URL: `https://thepeoplesledger.net/sitemap.xml`
 
 **Maintenance frequency:** Regenerate after each quarterly data refresh (after new records are uploaded and categorized). This is the final step in the quarterly pipeline.
 

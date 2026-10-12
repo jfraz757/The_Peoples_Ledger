@@ -404,7 +404,7 @@ def delete_from_review(csv_path, apply):
     n = delete_ids(url, key, del_ids)
     print(f"\nDone. Deleted {n} reviewed record(s).")
     print("Next: regenerate SEO pages so the static pages and sitemap match the DB:")
-    print("  node generate-business-pages.js && git add businesses/ && "
+    print("  node generate-business-pages.js && git add businesses/ sitemap.xml && "
           "git commit -m 'Remove reviewed out-of-state businesses' && git push")
 
 
@@ -490,7 +490,7 @@ def main():
     n = delete_ids(url, key, ids)
     print(f"\nDone. Deleted {n} out-of-state records.")
     print("Next: regenerate SEO pages so the static pages and sitemap match the DB:")
-    print("  node generate-business-pages.js && git add businesses/ && "
+    print("  node generate-business-pages.js && git add businesses/ sitemap.xml && "
           "git commit -m 'Remove out-of-state businesses' && git push")
 
 

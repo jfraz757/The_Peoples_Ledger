@@ -4,4 +4,4 @@ Allow: /
 # copies of the homepage; keep crawlers spending their time on the real pages instead.
 Disallow: /?search=
 
-Sitemap: https://thepeoplesledger.net/businesses/sitemap.xml
+Sitemap: https://thepeoplesledger.net/sitemap.xml

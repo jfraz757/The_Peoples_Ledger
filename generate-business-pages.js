@@ -6,7 +6,7 @@
 //   1. Queries Supabase for all businesses (paginated — handles 1,191+ records)
 //   2. Writes a static HTML file to /businesses/{slug}.html for each business
 //   3. Writes /directory/ pages grouping businesses by city, category and ownership
-//   4. Writes /businesses/sitemap.xml listing every business and directory page
+//   4. Writes /sitemap.xml (site root) listing every business and directory page
 //
 // After running:
 //   git add businesses/ directory/
@@ -1157,14 +1157,16 @@ async function main() {
   console.log(`  ${dir.pages.length} directory page(s): ${dirWritten} written, ${dirStale.length} removed.`);
 
   const sitemap = buildSitemap(businesses.filter(b => b.business_name && b.business_name.trim()), dir.pages);
-  const sitemapPath = path.join(OUT_DIR, "sitemap.xml");
+  // At the root, not in /businesses/: a sitemap only covers URLs under its own folder,
+  // so from /businesses/ it could not vouch for the homepage, About, or /directory/.
+  const sitemapPath = path.join(__dirname, "sitemap.xml");
   let oldSitemap = null;
   try { oldSitemap = fs.readFileSync(sitemapPath, "utf8").replace(/\r\n/g, "\n"); } catch { /* first run */ }
   if (oldSitemap === sitemap) {
     console.log("  sitemap.xml unchanged.");
   } else {
     fs.writeFileSync(sitemapPath, sitemap, "utf8");
-    console.log("  sitemap.xml written to /businesses/");
+    console.log("  sitemap.xml written to the site root.");
   }
 
   // id -> slug for every page written, so the directory cards in index.html can link to
@@ -1186,7 +1188,7 @@ async function main() {
   console.log('  git commit -m "Generate business SEO pages"');
   console.log("  git push");
   console.log("\nThen submit your sitemap to Google Search Console:");
-  console.log(`  ${SITE_URL}/businesses/sitemap.xml`);
+  console.log(`  ${SITE_URL}/sitemap.xml`);
   console.log("  https://search.google.com/search-console");
 }
 

@@ -72,7 +72,7 @@ def links():
     run("maintain.py", label="Link status check (monthly)")
     done("Link check done. If any statuses changed, publish them to the static pages:",
          "        node generate-business-pages.js",
-         "        git add businesses/ && git commit -m \"Refresh link status\" && git push")
+         "        git add businesses/ sitemap.xml && git commit -m \"Refresh link status\" && git push")
 
 
 def git(*args):
