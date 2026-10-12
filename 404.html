@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xr6q4yw2ld");
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Page Not Found | The People's Ledger</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      min-height: 100%;
+      background-color: #1a1a1a;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #ffffff;
+    }
+
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ─── Header ─────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 50px;
+      z-index: 100;
+      background-color: rgba(30, 30, 30, 0.92);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    .site-title {
+      font-family: 'Michroma', sans-serif;
+      font-weight: 400;
+      color: #FFD700;
+      font-size: clamp(18px, 2.8vw, 38px);
+      letter-spacing: 3px;
+      -webkit-text-stroke: 1px #FFD700;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    /* ─── Content ─────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 72px 32px 80px;
+      text-align: center;
+    }
+
+    .code {
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(3rem, 10vw, 5.5rem);
+      color: #FFD700;
+      letter-spacing: 6px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(1rem, 2.2vw, 1.4rem);
+      color: #FFD700;
+      letter-spacing: 2px;
+      margin-bottom: 24px;
+    }
+
+    p {
+      font-size: 0.97rem;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.85;
+      margin-bottom: 18px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 36px;
+    }
+
+    .btn-cta {
+      display: inline-block;
+      background-color: transparent;
+      border: 2px solid #FFD700;
+      color: #FFD700;
+      font-family: 'Michroma', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 14px 32px;
+      border-radius: 25px;
+      text-decoration: none;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .btn-cta:hover {
+      background-color: #FFD700;
+      color: #1a1a1a;
+    }
+
+    /* ─── Footer ──────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 28px 20px;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 14px 20px; }
+      main { padding: 48px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- This page is served for every missing URL at any depth, so all links are root-absolute. -->
+<header>
+  <a href="/" class="site-title">THE PEOPLE'S LEDGER</a>
+</header>
+
+<main>
+  <div class="code">404</div>
+  <h1>This page isn't here</h1>
+  <p id="message">The page you're looking for doesn't exist or has moved.</p>
+  <p>Businesses sometimes leave the directory when they close, merge with another listing, or can't be verified. If you think a listing was removed by mistake, let us know through the submission form on the directory page.</p>
+  <div class="actions">
+    <a href="/" class="btn-cta" id="search-link">SEARCH THE DIRECTORY</a>
+    <a href="/directory/" class="btn-cta">BROWSE BY CATEGORY</a>
+  </div>
+</main>
+
+<footer>
+  &copy; 2025-2026 Education to Action LLC &nbsp;|&nbsp; The People's Ledger &nbsp;|&nbsp; Louisville, Kentucky
+</footer>
+
+<script>
+  // Old business links look like /businesses/<slug>. Turn the slug back into a likely
+  // name and pre-fill the directory search with it (index.html reads ?search=).
+  (() => {
+    const m = window.location.pathname.match(/^\/businesses\/([^\/]+?)(?:\.html)?\/?$/);
+    if (!m) return;
+    const name = decodeURIComponent(m[1])
+      .split("-")
+      .filter(w => w && !/^(llc|inc|co|corp|pllc|ltd|the|d|b|a)$/i.test(w))
+      .slice(0, 3)
+      .join(" ");
+    if (!name) return;
+    document.getElementById("message").textContent =
+      `We couldn't find a page for "${name}". It may have been removed from the directory, or it may be listed under a different name.`;
+    const link = document.getElementById("search-link");
+    link.href = "/?search=" + encodeURIComponent(name);
+    link.textContent = "SEARCH FOR THIS BUSINESS";
+  })();
+</script>
+
+</body>
+</html>

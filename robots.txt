@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+# Every business page links to the directory as /?search=<name>. Those are thousands of
+# copies of the homepage; keep crawlers spending their time on the real pages instead.
+Disallow: /?search=
 
 Sitemap: https://thepeoplesledger.net/businesses/sitemap.xml

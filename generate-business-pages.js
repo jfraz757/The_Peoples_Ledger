@@ -1088,6 +1088,12 @@ async function main() {
   const businesses = await fetchAllBusinesses();
   console.log(`  ${businesses.length} businesses fetched.`);
 
+  // Some addresses were imported from spreadsheets that stored the zip as a number, so
+  // they end in "40245.0". That reached the page, the Maps link and the structured data.
+  for (const b of businesses) {
+    if (b.address) b.address = String(b.address).replace(/\b(\d{5})\.0\b/g, "$1");
+  }
+
   // Must run before any page, filename, or sitemap entry is produced -- all three read
   // biz._slug and must agree.
   assignSlugs(businesses);
