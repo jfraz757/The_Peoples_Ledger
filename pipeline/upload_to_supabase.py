@@ -24,6 +24,7 @@ Usage:
 import os
 import sys
 import math
+import re
 import pandas as pd
 from supabase import create_client
 
@@ -84,6 +85,12 @@ def main():
         if isinstance(v, str) and v.strip() == "":
             return None
         return v
+
+    # A spreadsheet zip read as a number turns "40245" into "40245.0" in the joined
+    # address; clean_addresses.py repaired 52 live rows like that in October 2026.
+    if "address" in df.columns:
+        df["address"] = df["address"].map(
+            lambda a: re.sub(r"(?<![\d.])(\d{5})\.0(?![\d.])", r"\1", a) if isinstance(a, str) else a)
 
     records = [{k: clean(v) for k, v in r.items()}
                for r in df.to_dict(orient="records")]

@@ -6,6 +6,10 @@ Remove "N/A" tokens from the `address` column of the live `businesses` table.
 Many rows carry a real Kentucky address plus a trailing "N/A" (e.g.
 "Louisville, KY, N/A"), which was pushing them into the purge review pile.
 
+Also repairs zip codes that a spreadsheet import stored as numbers, so the
+address ends in "40245.0" -- that showed on the public pages and in their
+structured data.
+
 After stripping "N/A" the script tidies the leftovers: drops empty comma
 segments, collapses double spaces, strips stray leading/trailing commas. If a
 cell was nothing but "N/A", the address is set to NULL (so purge keeps it as
@@ -39,6 +43,9 @@ DATA_DIR = REPO_ROOT / "data"
 # alphanumeric, so we never gut a real word. "NA" with no slash is left alone.
 _NA_RE = re.compile(r"(?<![A-Za-z0-9])[Nn]\s*/\s*[Aa](?![A-Za-z0-9])")
 
+# A five-digit zip followed by ".0" (a float-formatted zip), not part of a longer number.
+_FLOAT_ZIP_RE = re.compile(r"(?<![\d.])(\d{5})\.0(?![\d.])")
+
 
 def clean_address(addr):
     """Return (new_value_or_None, changed_bool)."""
@@ -48,6 +55,7 @@ def clean_address(addr):
     segments = []
     for seg in original.split(","):
         seg = _NA_RE.sub(" ", seg)            # drop N/A tokens in this segment
+        seg = _FLOAT_ZIP_RE.sub(r"\1", seg)   # "40245.0" -> "40245"
         seg = re.sub(r"\s+", " ", seg).strip()  # collapse whitespace
         if seg:
             segments.append(seg)
@@ -75,6 +83,10 @@ def selftest():
         (None, None),
         ("Anna's Bakery, Owensboro, KY", "Anna's Bakery, Owensboro, KY"),  # 'Anna' not touched
         ("123 Nashville Rd, Bowling Green, KY 42101", "123 Nashville Rd, Bowling Green, KY 42101"),
+        ("17908 Meremont Ridge Court, Louisville, KY, 40245.0",
+         "17908 Meremont Ridge Court, Louisville, KY, 40245"),
+        ("Lexington, KY 40502.0", "Lexington, KY 40502"),
+        ("40202.05 Main St, Louisville, KY", "40202.05 Main St, Louisville, KY"),  # not a zip
     ]
     passed = failed = 0
     for addr, expected in cases:
@@ -127,7 +139,7 @@ def write_csv(path, rows, fields):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Strip N/A from business addresses.")
+    ap = argparse.ArgumentParser(description="Strip N/A and float zip codes from business addresses.")
     ap.add_argument("--apply", action="store_true",
                     help="Actually write changes. Default is a dry run.")
     ap.add_argument("--selftest", action="store_true",
@@ -155,7 +167,7 @@ def main():
                 "set_null": new_val is None,
             })
 
-    print(f"Rows with an N/A to clean: {len(changes)}")
+    print(f"Rows to clean (N/A or a .0 zip): {len(changes)}")
     set_null = sum(1 for c in changes if c["set_null"])
     if set_null:
         print(f"  of those, {set_null} become NULL (cell was only N/A)\n")
