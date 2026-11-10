@@ -207,7 +207,7 @@ select table_name, grantee, privilege_type from information_schema.table_privile
 where table_schema='public' and grantee in ('anon','authenticated');
 ```
 
-Database backups are written by `backup_supabase.py` to `backups/`, which is gitignored — the dump contains submitter names and email addresses. The free tier has no automatic backups, so this is the only copy.
+Database backups are written by `backup_supabase.py` to `backups/`, which is gitignored — the dump contains submitter names and email addresses. The free tier has no automatic backups. The "PeoplesLedger DB Backup" scheduled task runs it daily at 8:00 AM, and each successful run deletes backups older than 14 days, keeping the earliest backup of each month. The "Website Repos - External Drive Backup" task copies the repo, `backups/` included, to `D:\Website_Backups` at 8:30 AM; that copy never deletes old backups.
 
 ---
 

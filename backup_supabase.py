@@ -21,8 +21,9 @@ Output: backups/YYYY-MM-DD_HHMMSS/<table>.json, one file per table, plus manifes
 The dump is the full row set including pending submissions and submitter emails, so treat
 the backups/ directory as sensitive.
 
-PRUNING (opt-in; the scheduled task does not prune)
-The daily task never deleted anything, so backups/ grows by one folder a day forever.
+PRUNING
+Since 2026-10-28 every successful backup prunes old ones automatically (a failed or empty
+backup prunes nothing). To check or prune by hand:
 
     python backup_supabase.py --prune          # REPORT what would be removed; deletes nothing
     python backup_supabase.py --prune --yes    # actually remove those folders
@@ -174,7 +175,8 @@ def main():
         # Exit non-zero so a scheduled run surfaces it instead of quietly "succeeding".
         sys.exit("\nAll tables returned 0 rows -- treat this backup as FAILED and check the key.")
 
-    print(f"\n{total} rows total -> {out_dir}")
+    print(f"\n{total} rows total -> {out_dir}\n")
+    prune(apply=True)
 
 
 if __name__ == "__main__":
