@@ -1,7 +1,7 @@
 <#
 Create (or remove) the "PeoplesLedger Monthly Link Check" scheduled task: on the 1st of
 every month it runs `pipeline\ledger.py monthly` -- the link-status check, then regenerate
-the business pages, then commit and push businesses/ so the new statuses go live.
+the pages, then commit and push businesses/, directory/ and sitemap.xml so the new statuses go live.
 
     powershell -ExecutionPolicy Bypass -File install_monthly_links.ps1              # install / update
     powershell -ExecutionPolicy Bypass -File install_monthly_links.ps1 -Uninstall   # remove

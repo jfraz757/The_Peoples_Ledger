@@ -9,7 +9,7 @@
 //   4. Writes /sitemap.xml (site root) listing every business and directory page
 //
 // After running:
-//   git add businesses/ directory/
+//   git add businesses/ directory/ sitemap.xml
 //   git commit -m "Regenerate business SEO pages"
 //   git push
 
@@ -1184,7 +1184,7 @@ async function main() {
   }
 
   console.log("\nDone. Next steps:");
-  console.log("  git add businesses/ directory/");
+  console.log("  git add businesses/ directory/ sitemap.xml");
   console.log('  git commit -m "Generate business SEO pages"');
   console.log("  git push");
   console.log("\nThen submit your sitemap to Google Search Console:");

@@ -17,7 +17,7 @@
 **Nothing to do.** The "PeoplesLedger Monthly Link Check" scheduled task runs
 `python pipeline/ledger.py monthly` at 10:00 on the 1st of every month (or as soon as the
 PC is next on): it re-checks every business website, updates `status` (Active / Inactive /
-No Website), regenerates the pages, and commits and pushes `businesses/` so the new
+No Website), regenerates the pages, and commits and pushes `businesses/`, `directory/` and `sitemap.xml` so the new
 statuses go live. Output is appended to `data/monthly_links.log` -- glance at it if you
 want to confirm a run. It only pushes from `main`.
 
@@ -130,7 +130,7 @@ Claude — cheaper than a full-table `enrich.py` pass and safe to re-run anytime
 | `pipeline/dedupe_live.py` | Merge duplicate rows on the live table (dry run default; `--apply`) | Free |
 | `pipeline/maintain.py --buyblack` | When you spot buyblack.org placeholder URLs in the directory | SerpApi |
 | `pipeline/view_database.py` | Local exploration of a `data/` CSV in D-Tale | Free |
-| `backup_supabase.py --prune` | Report backups outside retention (14 days + one per month); add `--yes` to remove them | Free |
+| `backup_supabase.py --prune` | Report backups outside retention (14 days + one per month); add `--yes` to remove them. Every successful daily backup already does this automatically (since 2026-10-28). | Free |
 | `pipeline/reconcile_certifications.py` | Lane 2 certification spreadsheets (HRC, KY Transportation, KY Finance). `ledger.py certs` runs the dry run. | Free |
 
 ---

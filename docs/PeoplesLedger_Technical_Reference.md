@@ -500,7 +500,7 @@ All scripts load `.env` from the repo root and derive `data/` from their own loc
 | `pipeline/verify_listings.py` | Re-checks old web-lane listings against Google Maps: generic-only "Minority-Owned (general)" tags (re-tagged from Google's owner attribute, else cleared) and websites that point at an article/directory 3+ different businesses share (replaced with the Maps website, else cleared). Strict matching: suffix-stripped names token_sort ≥ 90 (or one 2+-word name contained in the other), Kentucky address, same city. Dry run by default; `--apply` backs up every old value. Searches cached in `data/cache/verify/`. | As needed | SerpApi (1 search per listing) |
 | `pipeline/website_ownership.py` | For listings with no ownership tag and no certification: reads the business's OWN site (home + up to 3 about/story/team pages), finds ownership statements, and asks Claude whether each is about this business. Groups go to `minority_type`; claimed certifications (MBE, WBE, DBE, SDVOSB, ...) go to `self_reported_certification`. A certification counts only if its name is in the quote; "Minority-Owned (general)" only if the quote says minority-owned; the quote must appear on the page. Dry run writes `data/website_ownership_plan.csv`; `--apply` writes exactly that reviewed plan. | As needed | Claude (one call per site with a statement) |
 | `pipeline/view_database.py` | Open a `data/` CSV in D-Tale | As needed | Free |
-| `backup_supabase.py` (repo root) | Dumps `businesses` + `submissions` to `backups/<timestamp>/` as JSON. Paginates at 1000 (PostgREST truncates silently) and exits non-zero on a zero-row dump so a scheduled run cannot fail quietly. Reads URL + service-role key from admin.html. `--prune` reports which backups fall outside retention (last 14 days + the earliest of each month); `--prune --yes` removes them. The scheduled task does not prune. | Before any schema/RLS/grant change; daily via Task Scheduler | Free |
+| `backup_supabase.py` (repo root) | Dumps `businesses` + `submissions` to `backups/<timestamp>/` as JSON. Paginates at 1000 (PostgREST truncates silently) and exits non-zero on a zero-row dump so a scheduled run cannot fail quietly. Reads URL + service-role key from admin.html. `--prune` reports which backups fall outside retention (last 14 days + the earliest of each month); `--prune --yes` removes them. Since 2026-10-28 every successful backup also prunes automatically; a failed or zero-row backup prunes nothing. | Before any schema/RLS/grant change; daily via Task Scheduler | Free |
 | `install_monthly_links.ps1` (repo root) | Installs the "PeoplesLedger Monthly Link Check" scheduled task: 10:00 on the 1st of each month (StartWhenAvailable), runs `py -3 pipeline\ledger.py monthly` headless, appends to `data/monthly_links.log`. Uses the `py` launcher so a moved Python cannot break it. `-Uninstall` removes it. Created with schtasks.exe because Register-ScheduledTask rejects a hand-built monthly trigger on PowerShell 5.1. | Once (re-run to update) | Free |
 | `notify_pending.ps1` (repo root) | Windows notification when a new submission is pending. Reads the service-role key from admin.html; announced IDs are in `data/.notify_pending_state.json`. `-Test` shows a sample. Installed as a scheduled task by `install_pending_alert.ps1` (`-Uninstall` to remove). | Every 10 min via Task Scheduler | Free |
 | `pipeline/reconcile_certifications.py` | Lane 2: matches the certifier lists against the live table, backfills `certification_type`, and inserts certified businesses not yet present. Dry-run by default; `--apply` backfills, `--insert-new` also inserts. Matches 85-93 go to a review CSV and are never auto-applied. Needs the service-role key. | As agencies refresh (quarterly) | Free |
@@ -652,7 +652,7 @@ Sitemap URL: `https://thepeoplesledger.net/sitemap.xml`
 
 **After running:**
 ```bash
-git add businesses/
+git add businesses/ directory/ sitemap.xml
 git commit -m "Regenerate business SEO pages"
 git push
 ```
@@ -667,7 +667,7 @@ Everything routine goes through `python pipeline/ledger.py <verb>`; `docs/mainte
 
 | Task | Command | Frequency |
 |---|---|---|
-| Refresh link statuses | Automatic: scheduled task runs `ledger.py monthly` on the 1st (link check + regenerate + push `businesses/`). By hand: `ledger.py links` | Monthly |
+| Refresh link statuses | Automatic: scheduled task runs `ledger.py monthly` on the 1st (link check + regenerate + push `businesses/`, `directory/`, `sitemap.xml`). By hand: `ledger.py links` | Monthly |
 | Start a new cycle | `ledger.py new-cycle` | Quarterly, before scraping |
 | Add new businesses | `ledger.py scrape` | Quarterly (the only month SerpApi needs a paid plan) |
 | Prepare + auto-settle + flag | `ledger.py prep` | After each scrape |

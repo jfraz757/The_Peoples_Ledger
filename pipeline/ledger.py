@@ -31,6 +31,12 @@ import common  # noqa: E402
 REPO_ROOT = common.REPO_ROOT
 RULE = "=" * 64
 
+# Everything generate-business-pages.js writes. The automated commits include exactly
+# these paths and nothing else, so unrelated work in the tree is never swept in.
+# directory/ and sitemap.xml were missing until Nov 2026, which left the live directory
+# counts and sitemap a month stale after the first monthly run that rebuilt them.
+PAGE_PATHS = ["businesses/", "directory/", "sitemap.xml"]
+
 
 def run(script, *args, label=""):
     """Run a pipeline script with the SAME interpreter running ledger.py, from the repo
@@ -72,7 +78,7 @@ def links():
     run("maintain.py", label="Link status check (monthly)")
     done("Link check done. If any statuses changed, publish them to the static pages:",
          "        node generate-business-pages.js",
-         "        git add businesses/ sitemap.xml && git commit -m \"Refresh link status\" && git push")
+         f"        git add {' '.join(PAGE_PATHS)} && git commit -m \"Refresh link status\" && git push")
 
 
 def git(*args):
@@ -82,7 +88,7 @@ def git(*args):
 def monthly():
     """Unattended monthly run (Task Scheduler, 1st of the month -- see
     install_monthly_links.ps1): link check, regenerate pages, then commit and push
-    ONLY businesses/ so the new statuses reach the live site.
+    ONLY the generated pages (PAGE_PATHS) so the new statuses reach the live site.
 
     The link check went unrun for two months in 2026 because it depended on someone
     remembering it, and a status change that is never pushed never reaches the site.
@@ -90,18 +96,19 @@ def monthly():
     from datetime import date
     print(f"\n#### Monthly link check {date.today().isoformat()} ####")
     run("maintain.py", label="Link status check (monthly)")
-    generate_pages()
+    if not generate_pages():
+        sys.exit(1)
 
     branch = git("branch", "--show-current").stdout.strip()
     if branch != "main":
         done(f"On branch '{branch}', not main -- pages regenerated but NOT committed or pushed.")
         return
-    git("add", "-A", "businesses/")
-    if git("diff", "--cached", "--quiet", "--", "businesses/").returncode == 0:
+    git("add", "-A", "--", *PAGE_PATHS)
+    if git("diff", "--cached", "--quiet", "--", *PAGE_PATHS).returncode == 0:
         done("No page changes this month. Nothing to commit.")
         return
-    # Pathspec commit: only businesses/ goes in, even if other files happen to be staged.
-    c = git("commit", "-m", f"Monthly link check {date.today().isoformat()}", "--", "businesses/")
+    # Pathspec commit: only the generated pages go in, even if other files are staged.
+    c = git("commit", "-m", f"Monthly link check {date.today().isoformat()}", "--", *PAGE_PATHS)
     print(c.stdout.strip() or c.stderr.strip())
     p = git("push", "origin", "main")
     if p.returncode != 0:
@@ -183,12 +190,13 @@ def publish_submissions():
         label="Enrich industry/services for newly-approved submissions")
     if not generate_pages():
         return
-    subprocess.run(["git", "add", "businesses/"], cwd=REPO_ROOT)
-    staged = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_ROOT).returncode
-    if staged == 0:
+    git("add", "-A", "--", *PAGE_PATHS)
+    if git("diff", "--cached", "--quiet", "--", *PAGE_PATHS).returncode == 0:
         done("No page changes to commit.")
         return
-    subprocess.run(["git", "commit", "-m", "Publish new submissions"], cwd=REPO_ROOT)
+    # Pathspec commit, same as monthly(): only the generated pages, never other staged work.
+    c = git("commit", "-m", "Publish new submissions", "--", *PAGE_PATHS)
+    print(c.stdout.strip() or c.stderr.strip())
     done("Committed the regenerated pages. Push to put them live:",
          "        git push")
 
